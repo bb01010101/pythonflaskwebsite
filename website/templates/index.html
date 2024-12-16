@@ -6,10 +6,10 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card p-4 shadow-sm">
-                <h2 class="mb-4 text-center">Welcome, {{ user.first_name }}!</h2>
+                <h1 class="mb-4 text-center">Welcome, {{ user.first_name }}!</h1>
                 <div class="card-body">
-                    <p class="text-center h4">Track your sleep, calories, hydration, running mileage, and notes</p>
-                    <p class="text-center h2"><i><em>all in one place</em></i>.</p>
+                    <p class="lead text-center ">Track your sleep, calories, hydration, running mileage, and notes</p>
+                    <p class="lead text-center"><i><em>all in one place</em></i>.</p>
                     <div class="text-center mt-4">
                         <a href="{{ url_for('views.add_entry') }}" class="btn btn-primary mr-2">Add New Entry</a>
                         <a href="{{ url_for('views.view_data') }}" class="btn btn-info mr-2">View Your Data</a>
