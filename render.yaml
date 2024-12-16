@@ -3,11 +3,13 @@ services:
     name: health-tracker
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --worker-class eventlet -w 1 wsgi:app
+    startCommand: gunicorn wsgi:app --worker-class eventlet --workers 1 --bind 0.0.0.0:$PORT --timeout 120 --log-level debug
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: SECRET_KEY
         generateValue: true
-      - key: WEB_CONCURRENCY
-        value: 1
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: FLASK_ENV
+        value: production
