@@ -12,6 +12,7 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(150))
     first_name = db.Column(db.String(150))
     entries = db.relationship('Entry')
+    messages = db.relationship('Message', backref='author', lazy=True)
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -22,6 +23,12 @@ class Entry(db.Model):
     running_mileage = db.Column(db.Float, default=0)
     notes = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 
 

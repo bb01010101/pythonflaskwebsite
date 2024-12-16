@@ -3,12 +3,14 @@ from flask_sqlalchemy import SQLAlchemy
 from os import path
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_socketio import SocketIO
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
 
 db = SQLAlchemy()
 DB_NAME = "database.db"
+socketio = SocketIO()
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -25,6 +27,7 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     migrate = Migrate(app, db)
+    socketio.init_app(app)
 
     from .views import views 
     from .auth import auth 

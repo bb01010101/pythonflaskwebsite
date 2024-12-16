@@ -1,13 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
-from .models import User, Entry
-from . import db
+from .models import User, Entry, Message
+from . import db, socketio
 import json
 import datetime
+from flask_socketio import emit
 
 views = Blueprint('views', __name__)
-
 
 @views.route('/', methods=['GET', 'POST'])
 @login_required
@@ -169,4 +169,52 @@ def delete_entry(entry_id):
     db.session.delete(entry)
     db.session.commit()  # Commit deletion
     return redirect(url_for('views.view_data'))
+
+@views.route('/message_board')
+@login_required
+def message_board():
+    messages = Message.query.order_by(Message.timestamp.asc()).all()
+    print(f"Found {len(messages)} messages")  # Debug print
+    
+    # Convert messages to JSON-serializable format
+    serialized_messages = []
+    for message in messages:
+        serialized_messages.append({
+            'id': message.id,
+            'content': message.content,
+            'user_id': message.user_id,
+            'username': message.author.first_name,
+            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        })
+        print(f"Serialized message: {serialized_messages[-1]}")  # Debug print
+    
+    return render_template('message_board.html', messages=serialized_messages, user=current_user)
+
+@socketio.on('new_message')
+def handle_message(data):
+    print(f"Received message from user {current_user.id}: {data}")  # Debug print
+    if not current_user.is_authenticated:
+        print("User not authenticated")  # Debug print
+        return
+    
+    try:
+        message = Message(
+            content=data['content'],
+            user_id=current_user.id
+        )
+        db.session.add(message)
+        db.session.commit()
+        print(f"Saved message {message.id} to database")  # Debug print
+        
+        response_data = {
+            'user_id': current_user.id,
+            'username': current_user.first_name,
+            'content': message.content,
+            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        print(f"Broadcasting message: {response_data}")  # Debug print
+        emit('message', response_data, broadcast=True)
+    except Exception as e:
+        print(f"Error handling message: {e}")  # Debug print
+        db.session.rollback()
 
