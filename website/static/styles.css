@@ -25,4 +25,69 @@ p {
 
 .text-medium {
     font-size: 1.5rem !important;
+}
+
+.typewriter {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Welcome message types first */
+h1.typewriter::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: #f9f9f9;
+  border-left: 2px solid #666;
+  animation: typing 0.5s steps(30) forwards;
+}
+
+/* Add Daily Entry header */
+h2.typewriter::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: #f9f9f9;
+  border-left: 2px solid #666;
+  animation: typing 0.5s steps(30) forwards;
+}
+
+/* Main message types second */
+p.typewriter::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: #f9f9f9;
+  border-left: 2px solid #666;
+  animation: typing 1.5s steps(40) forwards 0.5s;
+}
+
+.button-container {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s ease forwards 2.5s;
+}
+
+@keyframes typing {
+  to { 
+    width: 0;
+    border-left: transparent;
+  }
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 } 
