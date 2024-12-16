@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Edit Entry</h2>
+<form method="POST">
+    <label for="date">Date:</label>
+    <input type="date" name="date" value="{{ entry.date }}" required><br>
+
+    <label for="sleep_hours">Sleep Hours:</label>
+    <input type="number" step="0.1" name="sleep_hours" value="{{ entry.sleep_hours }}" required><br>
+
+    <label for="calories">Calories:</label>
+    <input type="number" name="calories" value="{{ entry.calories }}" required><br>
+
+    <label for="hydration">Hydration (Liters):</label>
+    <input type="number" step="0.1" name="hydration" value="{{ entry.hydration }}" required><br>
+
+    <label for="running_mileage">Running Mileage:</label>
+    <input type="number" step="0.1" name="running_mileage" value="{{ entry.running_mileage }}" required><br>
+
+    <label for="notes">Notes:</label>
+    <textarea name="notes">{{ entry.notes }}</textarea><br>
+
+    <button type="submit">Save Changes</button>
+</form>
+{% endblock %}

@@ -29,7 +29,6 @@ def login():
 
 
 
-
 @auth.route('/logout')
 @login_required
 def logout():

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Add Daily Entry</h2>
+<form method="POST">
+    <label>Date: <input type="date" name="date"></label><br>
+    <label>Sleep Hours: <input type="number" step="0.1" name="sleep_hours"></label><br>
+    <label>Calories: <input type="number" name="calories"></label><br>
+    <label>Hydration (Liters): <input type="number" step="0.1" name="hydration"></label><br>
+    <label>Running Mileage: <input type="number" step="0.1" name="running_mileage"></label><br>
+    <label>Notes: <textarea name="notes"></textarea></label><br>
+    <button type="submit">Add Entry</button>
+</form>
+{% endblock %}
