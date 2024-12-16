@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center mb-4 typewriter">Health Statistics Leaderboard</h1>
+    <h3 class="text-center mb-3">{{ selected_timeframe }} - 
+        {% if selected_metric == 'running_mileage' %}
+            Miles
+        {% else %}
+            {{ selected_metric|title }}
+        {% endif %}
+    </h3>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="mb-3">
+                <div class="row">
+                    <div class="col-md-4">
+                        <select name="metric" class="form-control" id="metric-select">
+                            <option value="running_mileage" {% if selected_metric == 'running_mileage' %}selected{% endif %}>Running Mileage</option>
+                            <option value="calories" {% if selected_metric == 'calories' %}selected{% endif %}>Calories</option>
+                            <option value="water" {% if selected_metric == 'water' %}selected{% endif %}>Water Intake</option>
+                            <option value="sleep" {% if selected_metric == 'sleep' %}selected{% endif %}>Sleep Hours</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="timeframe" class="form-control" id="timeframe-select">
+                            <option value="day" {% if request.args.get('timeframe') == 'day' %}selected{% endif %}>Today</option>
+                            <option value="week" {% if request.args.get('timeframe') == 'week' %}selected{% endif %}>This Week</option>
+                            <option value="month" {% if request.args.get('timeframe') == 'month' %}selected{% endif %}>This Month</option>
+                            <option value="year" {% if request.args.get('timeframe') == 'year' %}selected{% endif %}>This Year</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">Update Rankings</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>User</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in leaderboard %}
+                        <tr {% if entry.user_id == current_user.id %}class="table-primary"{% endif %}>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ entry.username }}</td>
+                            <td>{{ entry.score }} {{ entry.unit }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

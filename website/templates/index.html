@@ -11,9 +11,10 @@
                     <p class="lead text-center typewriter">Track your sleep, calories, hydration, running mileage, and notes</p>
                     <p class="lead text-center typewriter"><i><em>all in one place</em></i>.</p>
                     <div class="text-center mt-4 button-container">
-                        <a href="{{ url_for('views.add_entry') }}" class="btn btn-primary mr-2">Add New Entry</a>
-                        <a href="{{ url_for('views.view_data') }}" class="btn btn-info mr-2">View Your Data</a>
-                        <a href="{{ url_for('views.view_charts') }}" class="btn btn-success">View Charts</a>
+                        <a href="{{ url_for('views.add_entry') }}" class="btn btn-primary m-2">New Entry</a>
+                        <a href="{{ url_for('views.view_data') }}" class="btn btn-info m-2">Your Data</a>
+                        <a href="{{ url_for('views.view_charts') }}" class="btn btn-success m-2">Your Charts</a>
+                        <a href="{{ url_for('auth.leaderboard') }}" class="btn btn-danger m-2">Leaderboard</a>
                     </div>
                 </div>
             </div>

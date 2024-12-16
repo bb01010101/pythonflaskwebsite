@@ -13,14 +13,13 @@ class User(db.Model, UserMixin):
     first_name = db.Column(db.String(150))
     entries = db.relationship('Entry')
 
-# Database Model
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, default=datetime.date.today)
-    sleep_hours = db.Column(db.Float, nullable=False)
-    calories = db.Column(db.Integer, nullable=False)
-    hydration = db.Column(db.Float, nullable=False)
-    running_mileage = db.Column(db.Float, nullable=False)
+    sleep_hours = db.Column(db.Float, default=0)
+    calories = db.Column(db.Integer, default=0)
+    water_intake = db.Column(db.Integer, default=0)
+    running_mileage = db.Column(db.Float, default=0)
     notes = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 

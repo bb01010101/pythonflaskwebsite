@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
-from .models import User
+from .models import User, Entry
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
 from flask_login import login_user, login_required, logout_user, current_user
- 
+from datetime import datetime, timedelta
+from sqlalchemy import func
 
 auth = Blueprint('auth', __name__)
 
@@ -64,3 +65,90 @@ def sign_up():
             return redirect(url_for('views.home'))
 
     return render_template("sign_up.html", user=current_user)
+
+@auth.route('/leaderboard')
+@login_required
+def leaderboard():
+    metric = request.args.get('metric', 'running_mileage')
+    timeframe = request.args.get('timeframe', 'day')
+    
+    # Calculate the date range based on timeframe
+    today = datetime.now().date()
+    if timeframe == 'day':
+        start_date = today
+        end_date = today
+    elif timeframe == 'week':
+        # Start from Monday of current week and include all days up to Sunday
+        start_date = today - timedelta(days=today.weekday())  # Monday
+        end_date = start_date + timedelta(days=6)  # Sunday
+    elif timeframe == 'month':
+        # Start from first day of current month
+        start_date = today.replace(day=1)
+        # Last day of current month
+        if today.month == 12:
+            end_date = today.replace(day=31)
+        else:
+            end_date = (today.replace(day=1, month=today.month + 1) - timedelta(days=1))
+    elif timeframe == 'year':
+        # Start from first day of current year
+        start_date = today.replace(month=1, day=1)
+        # Last day of current year
+        end_date = today.replace(month=12, day=31)
+    
+    print(f"Date range: {start_date} to {end_date}")  # Debug print
+    
+    # Define metric mappings
+    metric_columns = {
+        'running_mileage': Entry.running_mileage,
+        'calories': Entry.calories,
+        'water': Entry.water_intake,
+        'sleep': Entry.sleep_hours
+    }
+    
+    metric_units = {
+        'running_mileage': 'miles',
+        'calories': 'kcal',
+        'water': 'ml',
+        'sleep': 'hours'
+    }
+    
+    # Query to get aggregated data for the leaderboard
+    query = db.session.query(
+        User.id.label('user_id'),
+        User.first_name.label('username'),
+        func.sum(metric_columns[metric]).label('score')
+    ).join(Entry).filter(
+        Entry.date >= start_date,
+        Entry.date <= (end_date if timeframe != 'day' else today)
+    ).group_by(User.id, User.first_name).order_by(
+        func.sum(metric_columns[metric]).desc()
+    )
+    
+    print(f"SQL Query: {query}")  # Debug print
+    
+    leaderboard_data = query.all()
+    print(f"Leaderboard data: {leaderboard_data}")  # Debug print
+    
+    # Format the data for template
+    leaderboard = [{
+        'user_id': entry.user_id,
+        'username': entry.username,
+        'score': round(entry.score, 2) if entry.score else 0,
+        'unit': metric_units[metric]
+    } for entry in leaderboard_data]
+    
+    # Add timeframe to template for display
+    timeframe_display = {
+        'day': 'Today',
+        'week': 'This Week',
+        'month': 'This Month',
+        'year': 'This Year'
+    }
+    
+    return render_template('leaderboard.html', 
+                         leaderboard=leaderboard,
+                         current_user=current_user,
+                         user=current_user,
+                         selected_timeframe=timeframe_display[timeframe],
+                         selected_metric=metric,
+                         request=request)

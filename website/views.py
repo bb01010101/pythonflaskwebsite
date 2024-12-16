@@ -33,9 +33,53 @@ def view_charts():
         chart_data['daily'][date_str] = {
             'sleep_hours': entry.sleep_hours,
             'calories': entry.calories,
-            'hydration': entry.hydration,
+            'water_intake': entry.water_intake,
             'running_mileage': entry.running_mileage
         }
+        
+        # Process weekly data
+        week_str = entry.date.strftime('%Y-W%W')
+        if week_str not in chart_data['weekly']:
+            chart_data['weekly'][week_str] = {
+                'sleep_hours': 0,
+                'calories': 0,
+                'water_intake': 0,
+                'running_mileage': 0
+            }
+        chart_data['weekly'][week_str]['sleep_hours'] += entry.sleep_hours
+        chart_data['weekly'][week_str]['calories'] += entry.calories
+        chart_data['weekly'][week_str]['water_intake'] += entry.water_intake
+        chart_data['weekly'][week_str]['running_mileage'] += entry.running_mileage
+        
+        # Process monthly data
+        month_str = entry.date.strftime('%Y-%m')
+        if month_str not in chart_data['monthly']:
+            chart_data['monthly'][month_str] = {
+                'sleep_hours': 0,
+                'calories': 0,
+                'water_intake': 0,
+                'running_mileage': 0
+            }
+        chart_data['monthly'][month_str]['sleep_hours'] += entry.sleep_hours
+        chart_data['monthly'][month_str]['calories'] += entry.calories
+        chart_data['monthly'][month_str]['water_intake'] += entry.water_intake
+        chart_data['monthly'][month_str]['running_mileage'] += entry.running_mileage
+        
+        # Process yearly data
+        year_str = entry.date.strftime('%Y')
+        if year_str not in chart_data['yearly']:
+            chart_data['yearly'][year_str] = {
+                'sleep_hours': 0,
+                'calories': 0,
+                'water_intake': 0,
+                'running_mileage': 0
+            }
+        chart_data['yearly'][year_str]['sleep_hours'] += entry.sleep_hours
+        chart_data['yearly'][year_str]['calories'] += entry.calories
+        chart_data['yearly'][year_str]['water_intake'] += entry.water_intake
+        chart_data['yearly'][year_str]['running_mileage'] += entry.running_mileage
+    
+    print(f"Chart data: {chart_data}")  # Debug print
     
     return render_template("view_charts.html", user=current_user, chart_data=chart_data)
 
@@ -43,6 +87,9 @@ def view_charts():
 @login_required
 def view_data():
     entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.date.desc()).all()
+    print(f"Found {len(entries)} entries for user {current_user.id}")  # Debug print
+    for entry in entries:
+        print(f"Entry {entry.id}: date={entry.date}, sleep={entry.sleep_hours}, calories={entry.calories}, water={entry.water_intake}, miles={entry.running_mileage}")  # Debug print
     return render_template("view_data.html", user=current_user, entries=entries, chart_data=True)
 
 @views.route('/add_entry', methods=['GET', 'POST'])
@@ -55,32 +102,42 @@ def add_entry():
         
         sleep_hours = float(request.form.get('sleep_hours'))
         calories = int(request.form.get('calories'))
-        hydration = float(request.form.get('hydration'))
+        water_intake = float(request.form.get('hydration'))
         running_mileage = float(request.form.get('running_mileage'))
         notes = request.form.get('notes')
 
-        # Check if an entry for this date already exists
-        existing_entry = Entry.query.filter_by(date=date).first()
+        print(f"Adding entry for user {current_user.id} on date {date}")  # Debug print
+        print(f"Data: sleep={sleep_hours}, calories={calories}, water={water_intake}, miles={running_mileage}")  # Debug print
+
+        # Check if an entry for this date and user already exists
+        existing_entry = Entry.query.filter_by(
+            date=date,
+            user_id=current_user.id  # Add user_id to the filter
+        ).first()
+        
         if existing_entry:
-           # Update the existing entry instead of creating a new one
+            print(f"Updating existing entry {existing_entry.id}")  # Debug print
+            # Update the existing entry instead of creating a new one
             existing_entry.sleep_hours = sleep_hours
             existing_entry.calories = calories
-            existing_entry.hydration = hydration
+            existing_entry.water_intake = water_intake
             existing_entry.running_mileage = running_mileage
             existing_entry.notes = notes
             db.session.commit()
             flash('Entry updated successfully!', category='success')
             return redirect(url_for('views.view_data'))
+        
         # Add a new entry
         new_entry = Entry(
             date=date,
             sleep_hours=sleep_hours,
             calories=calories,
-            hydration=hydration,
+            water_intake=water_intake,
             running_mileage=running_mileage,
             notes=notes,
             user_id=current_user.id
         )
+        print(f"Creating new entry for user {current_user.id}")  # Debug print
         db.session.add(new_entry)
         db.session.commit()
         flash('Entry added successfully!', category='success')
@@ -96,7 +153,7 @@ def edit_entry(entry_id):
         entry.date = datetime.datetime.strptime(request.form['date'], '%Y-%m-%d').date()
         entry.sleep_hours = float(request.form['sleep_hours'])
         entry.calories = int(request.form['calories'])
-        entry.hydration = float(request.form['hydration'])
+        entry.water_intake = float(request.form['hydration'])
         entry.running_mileage = float(request.form['running_mileage'])
         entry.notes = request.form['notes']
         
