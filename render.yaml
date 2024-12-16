@@ -3,9 +3,11 @@ services:
     name: health-tracker
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -c gunicorn.conf.py "website:create_app()"
+    startCommand: gunicorn --worker-class eventlet -w 1 wsgi:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.0
+        value: 3.11.0
       - key: SECRET_KEY
-        generateValue: true 
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 1

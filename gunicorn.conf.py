@@ -1,7 +1,8 @@
 workers = 1
 worker_class = 'eventlet'
-bind = '0.0.0.0:10000'
+bind = '0.0.0.0:$PORT'
 daemon = False
 name = 'health_tracker'
 accesslog = '-'
-errorlog = '-' 
+errorlog = '-'
+timeout = 120 
