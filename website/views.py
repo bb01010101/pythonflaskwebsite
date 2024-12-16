@@ -17,12 +17,33 @@ def home():
 @views.route('/view_charts', methods=['GET', 'POST'])
 @login_required
 def view_charts():
-    return render_template("view_charts.html", user=current_user)
+    entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.date.asc()).all()
+    
+    # Prepare data for charts
+    chart_data = {
+        'daily': {},
+        'weekly': {},
+        'monthly': {},
+        'yearly': {}
+    }
+    
+    # Process daily data
+    for entry in entries:
+        date_str = entry.date.strftime('%Y-%m-%d')
+        chart_data['daily'][date_str] = {
+            'sleep_hours': entry.sleep_hours,
+            'calories': entry.calories,
+            'hydration': entry.hydration,
+            'running_mileage': entry.running_mileage
+        }
+    
+    return render_template("view_charts.html", user=current_user, chart_data=chart_data)
 
 @views.route('/view_data', methods=['GET', 'POST'])
 @login_required
 def view_data():
-    return render_template("view_data.html", user=current_user)
+    entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.date.desc()).all()
+    return render_template("view_data.html", user=current_user, entries=entries, chart_data=True)
 
 @views.route('/add_entry', methods=['GET', 'POST'])
 @login_required
@@ -37,13 +58,19 @@ def add_entry():
         hydration = float(request.form.get('hydration'))
         running_mileage = float(request.form.get('running_mileage'))
         notes = request.form.get('notes')
-        user = request.form.get('user')
 
         # Check if an entry for this date already exists
         existing_entry = Entry.query.filter_by(date=date).first()
         if existing_entry:
-            return render_template('add_entry.html', error="An entry for this date already exists.")
-
+           # Update the existing entry instead of creating a new one
+            existing_entry.sleep_hours = sleep_hours
+            existing_entry.calories = calories
+            existing_entry.hydration = hydration
+            existing_entry.running_mileage = running_mileage
+            existing_entry.notes = notes
+            db.session.commit()
+            flash('Entry updated successfully!', category='success')
+            return redirect(url_for('views.view_data'))
         # Add a new entry
         new_entry = Entry(
             date=date,
@@ -56,6 +83,7 @@ def add_entry():
         )
         db.session.add(new_entry)
         db.session.commit()
+        flash('Entry added successfully!', category='success')
         return redirect(url_for('views.home'))
     return render_template('add_entry.html', user=current_user)
 
@@ -73,7 +101,7 @@ def edit_entry(entry_id):
         entry.notes = request.form['notes']
         
         db.session.commit()  # Save the changes
-        return redirect(url_for('view_data'))
+        return redirect(url_for('views.view_data'))
 
     return render_template('edit_entry.html', entry=entry, user=current_user)
 
@@ -83,5 +111,5 @@ def delete_entry(entry_id):
     entry = Entry.query.get_or_404(entry_id)
     db.session.delete(entry)
     db.session.commit()  # Commit deletion
-    return redirect(url_for('view_data'))
+    return redirect(url_for('views.view_data'))
 

@@ -2,25 +2,38 @@
 
 {% block content %}
 {% if user.is_authenticated %}
-{% if chart_data %}
-    <!-- All the chart code -->
-    <!-- Display content for logged-in users -->
-<h2>Metrics Charts</h2>
+<div class="container mt-4">
+    <h2 class="mb-4 text-center">Metrics Charts</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card p-4 shadow-sm">
+                <div class="form-group">
+                    <label for="aggregation" class="font-weight-bold">Choose Time Frame:</label>
+                    <select id="aggregation" class="form-control mb-4">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
 
-<!-- Dropdown to select aggregation type -->
-<label for="aggregation">Choose Time Frame:</label>
-<select id="aggregation">
-    <option value="daily">Daily</option>
-    <option value="weekly">Weekly</option>
-    <option value="monthly">Monthly</option>
-    <option value="yearly">Yearly</option>
-</select>
-
-<!-- Chart.js Canvas for Separate Charts -->
-<canvas id="sleep-chart" width="800" height="400"></canvas>
-<canvas id="calories-chart" width="800" height="400"></canvas>
-<canvas id="hydration-chart" width="800" height="400"></canvas>
-<canvas id="running-chart" width="800" height="400"></canvas>
+                <!-- Chart.js Canvas for Separate Charts -->
+                <div class="chart-container mb-4">
+                    <canvas id="sleep-chart"></canvas>
+                </div>
+                <div class="chart-container mb-4">
+                    <canvas id="calories-chart"></canvas>
+                </div>
+                <div class="chart-container mb-4">
+                    <canvas id="hydration-chart"></canvas>
+                </div>
+                <div class="chart-container mb-4">
+                    <canvas id="running-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -105,9 +118,6 @@
     // Initialize charts with daily data
     updateCharts('daily');
 </script>
-{% else %}
-    <p>No data available for charts.</p>
-{% endif %}
 {% else %}
     <!-- Content for non-logged-in users -->
     <p>Please log in.</p>
