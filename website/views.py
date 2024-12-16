@@ -158,6 +158,7 @@ def edit_entry(entry_id):
         entry.notes = request.form['notes']
         
         db.session.commit()  # Save the changes
+        flash('Entry updated successfully!', category='success')
         return redirect(url_for('views.view_data'))
 
     return render_template('edit_entry.html', entry=entry, user=current_user)

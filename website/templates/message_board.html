@@ -16,7 +16,7 @@
                                  style="{% if message.user_id == current_user.id %}background-color: #FFB067; border: 1px solid #FF9F45;{% endif %}">
                                 <strong>{{ message.username }}</strong>
                                 <p class="mb-1">{{ message.content }}</p>
-                                <small class="{% if message.user_id == current_user.id %}text-white-50{% else %}text-muted{% endif %}">{{ message.timestamp }}</small>
+                                <small class="{% if message.user_id == current_user.id %}text-white-50{% else %}text-muted{% endif %}" data-timestamp="{{ message.timestamp }}">{{ message.timestamp }}</small>
                             </div>
                         </div>
                         {% endfor %}
@@ -63,7 +63,21 @@
         messageContainer.scrollTop = messageContainer.scrollHeight;
     }
 
-    // Add new message to the container
+    // Add new function to format timestamps
+    function formatTimestamp(utcTimestamp) {
+        const date = new Date(utcTimestamp + ' UTC');  // Parse UTC timestamp
+        const options = {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        };
+        return date.toLocaleString(undefined, options);  // Convert to local timezone
+    }
+
+    // Update appendMessage function to use the new timestamp formatting
     function appendMessage(data) {
         console.log('Received message:', data);
         try {
@@ -76,7 +90,7 @@
                      style="${isCurrentUser ? 'background-color: #FFB067; border: 1px solid #FF9F45; color: white;' : ''}">
                     <strong>${data.username}</strong>
                     <p class="mb-1">${data.content}</p>
-                    <small class="${isCurrentUser ? 'text-white-50' : 'text-muted'}">${data.timestamp}</small>
+                    <small class="${isCurrentUser ? 'text-white-50' : 'text-muted'}">${formatTimestamp(data.timestamp)}</small>
                 </div>
             `;
             
@@ -124,5 +138,14 @@
 
     // Log initial messages
     console.log('Initial messages:', {{ messages|tojson|safe }});
+
+    // Update existing messages when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        const messages = document.querySelectorAll('.message small');
+        messages.forEach(timestampElement => {
+            const utcTimestamp = timestampElement.textContent;
+            timestampElement.textContent = formatTimestamp(utcTimestamp);
+        });
+    });
 </script>
 {% endblock %} 
