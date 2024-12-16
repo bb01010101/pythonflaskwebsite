@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if user.is_authenticated %}
+{% if chart_data %}
+    <!-- All the chart code -->
+    <!-- Display content for logged-in users -->
+<h2>Metrics Charts</h2>
+
+<!-- Dropdown to select aggregation type -->
+<label for="aggregation">Choose Time Frame:</label>
+<select id="aggregation">
+    <option value="daily">Daily</option>
+    <option value="weekly">Weekly</option>
+    <option value="monthly">Monthly</option>
+    <option value="yearly">Yearly</option>
+</select>
+
+<!-- Chart.js Canvas for Separate Charts -->
+<canvas id="sleep-chart" width="800" height="400"></canvas>
+<canvas id="calories-chart" width="800" height="400"></canvas>
+<canvas id="hydration-chart" width="800" height="400"></canvas>
+<canvas id="running-chart" width="800" height="400"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Data passed from Flask
+    const chartData = {{ chart_data|tojson | safe }};
+    console.log(chartData);
+
+    const charts = {};
+
+    // Function to create or update a chart
+    function createChart(chartId, label, data, borderColor, backgroundColor) {
+        const ctx = document.getElementById(chartId).getContext('2d');
+        if (charts[chartId]) {
+            charts[chartId].data.labels = data.labels;
+            charts[chartId].data.datasets[0].data = data.values;
+            charts[chartId].update();
+        } else {
+            charts[chartId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: label,
+                        data: data.values,
+                        borderColor: borderColor,
+                        backgroundColor: backgroundColor,
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category'
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Function to update charts based on aggregation type
+    function updateCharts(aggregation) {
+        const data = chartData[aggregation];
+        const labels = Object.keys(data);
+        const values = Object.values(data);
+
+        createChart('sleep-chart', 'Sleep Hours', {
+            labels: labels,
+            values: values.map(v => v.sleep_hours)
+        }, 'blue', 'rgba(0, 0, 255, 0.1)');
+        
+        createChart('calories-chart', 'Calories', {
+            labels: labels,
+            values: values.map(v => v.calories)
+        }, 'red', 'rgba(255, 0, 0, 0.1)');
+
+        createChart('hydration-chart', 'Hydration (Liters)', {
+            labels: labels,
+            values: values.map(v => v.hydration)
+        }, 'green', 'rgba(0, 255, 0, 0.1)');
+
+        createChart('running-chart', 'Running Mileage', {
+            labels: labels,
+            values: values.map(v => v.running_mileage)
+        }, 'purple', 'rgba(128, 0, 128, 0.1)');
+    }
+
+    // Event listener for dropdown change
+    document.getElementById('aggregation').addEventListener('change', function () {
+        updateCharts(this.value);
+    });
+
+    // Initialize charts with daily data
+    updateCharts('daily');
+</script>
+{% else %}
+    <p>No data available for charts.</p>
+{% endif %}
+{% else %}
+    <!-- Content for non-logged-in users -->
+    <p>Please log in.</p>
+{% endif %}
+{% endblock %}

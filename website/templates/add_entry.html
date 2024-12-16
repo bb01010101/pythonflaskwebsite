@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if user.is_authenticated %}
 <h2>Add Daily Entry</h2>
 <form method="POST">
     <label>Date: <input type="date" name="date"></label><br>
@@ -11,4 +12,8 @@
     <label>Notes: <textarea name="notes"></textarea></label><br>
     <button type="submit">Add Entry</button>
 </form>
+{% else %}
+    <!-- Content for non-logged-in users -->
+    <p>Please log in.</p>
+{% endif %}
 {% endblock %}
