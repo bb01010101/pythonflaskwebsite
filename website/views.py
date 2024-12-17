@@ -8,6 +8,8 @@ import datetime
 from flask_socketio import emit
 import os
 from werkzeug.utils import secure_filename
+import boto3
+from botocore.exceptions import ClientError
 
 views = Blueprint('views', __name__)
 
@@ -17,6 +19,26 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 # Create upload folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_KEY')
+)
+
+def upload_to_s3(file, filename):
+    try:
+        bucket_name = os.getenv('S3_BUCKET_NAME')
+        s3_client.upload_fileobj(
+            file,
+            bucket_name,
+            filename,
+            ExtraArgs={'ACL': 'public-read'}
+        )
+        return f"https://{bucket_name}.s3.amazonaws.com/{filename}"
+    except ClientError as e:
+        print(f"Error uploading to S3: {e}")
+        return None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -333,10 +355,9 @@ def create_post():
                 filename = secure_filename(file.filename)
                 # Add timestamp to filename to make it unique
                 filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(file_path)
-                print(f"Saved image to: {file_path}")  # Debug print
-                image_path = filename
+                image_url = upload_to_s3(file, filename)
+                if image_url:
+                    image_path = image_url  # Store the full S3 URL
 
         # Create new post with current UTC time
         new_post = Post(

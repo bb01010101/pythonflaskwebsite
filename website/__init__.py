@@ -8,6 +8,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
 import datetime
+import os
 
 db = SQLAlchemy()
 DB_NAME = "database.db"
@@ -22,9 +23,17 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 
 def create_app():
     app = Flask(__name__)
-    app.config['DEBUG'] = True
-    app.config['SECRET_KEY'] = 'chenburger'
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
+    app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False') == 'True'
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
+    
+    # For production, use PostgreSQL
+    if os.getenv('RDS_HOSTNAME'):
+        db_url = (f"postgresql://{os.getenv('RDS_USERNAME')}:{os.getenv('RDS_PASSWORD')}@"
+                 f"{os.getenv('RDS_HOSTNAME')}:{os.getenv('RDS_PORT')}/{os.getenv('RDS_DB_NAME')}")
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
+    
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     migrate = Migrate(app, db)
