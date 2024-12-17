@@ -51,25 +51,29 @@ def view_charts():
             'sleep_hours': {},
             'calories': {},
             'water_intake': {},
-            'running_mileage': {}
+            'running_mileage': {},
+            'screen_time': {}
         },
         'weekly': {
             'sleep_hours': {},
             'calories': {},
             'water_intake': {},
-            'running_mileage': {}
+            'running_mileage': {},
+            'screen_time': {}
         },
         'monthly': {
             'sleep_hours': {},
             'calories': {},
             'water_intake': {},
-            'running_mileage': {}
+            'running_mileage': {},
+            'screen_time': {}
         },
         'yearly': {
             'sleep_hours': {},
             'calories': {},
             'water_intake': {},
-            'running_mileage': {}
+            'running_mileage': {},
+            'screen_time': {}
         }
     }
     
@@ -80,6 +84,7 @@ def view_charts():
         chart_data['daily']['calories'][date_str] = entry.calories
         chart_data['daily']['water_intake'][date_str] = entry.water_intake
         chart_data['daily']['running_mileage'][date_str] = entry.running_mileage
+        chart_data['daily']['screen_time'][date_str] = entry.screen_time
         
         # Process weekly data
         week_str = entry.date.strftime('%Y-W%W')
@@ -88,10 +93,12 @@ def view_charts():
             chart_data['weekly']['calories'][week_str] = 0
             chart_data['weekly']['water_intake'][week_str] = 0
             chart_data['weekly']['running_mileage'][week_str] = 0
+            chart_data['weekly']['screen_time'][week_str] = 0
         chart_data['weekly']['sleep_hours'][week_str] += entry.sleep_hours
         chart_data['weekly']['calories'][week_str] += entry.calories
         chart_data['weekly']['water_intake'][week_str] += entry.water_intake
         chart_data['weekly']['running_mileage'][week_str] += entry.running_mileage
+        chart_data['weekly']['screen_time'][week_str] += entry.screen_time
         
         # Process monthly data
         month_str = entry.date.strftime('%Y-%m')
@@ -100,10 +107,12 @@ def view_charts():
             chart_data['monthly']['calories'][month_str] = 0
             chart_data['monthly']['water_intake'][month_str] = 0
             chart_data['monthly']['running_mileage'][month_str] = 0
+            chart_data['monthly']['screen_time'][month_str] = 0
         chart_data['monthly']['sleep_hours'][month_str] += entry.sleep_hours
         chart_data['monthly']['calories'][month_str] += entry.calories
         chart_data['monthly']['water_intake'][month_str] += entry.water_intake
         chart_data['monthly']['running_mileage'][month_str] += entry.running_mileage
+        chart_data['monthly']['screen_time'][month_str] += entry.screen_time
         
         # Process yearly data
         year_str = entry.date.strftime('%Y')
@@ -112,10 +121,12 @@ def view_charts():
             chart_data['yearly']['calories'][year_str] = 0
             chart_data['yearly']['water_intake'][year_str] = 0
             chart_data['yearly']['running_mileage'][year_str] = 0
+            chart_data['yearly']['screen_time'][year_str] = 0
         chart_data['yearly']['sleep_hours'][year_str] += entry.sleep_hours
         chart_data['yearly']['calories'][year_str] += entry.calories
         chart_data['yearly']['water_intake'][year_str] += entry.water_intake
         chart_data['yearly']['running_mileage'][year_str] += entry.running_mileage
+        chart_data['yearly']['screen_time'][year_str] += entry.screen_time
     
     print("Entries found:", len(entries))  # Debug print
     print("Chart data structure:", json.dumps(chart_data, indent=2))  # Debug print
@@ -143,10 +154,16 @@ def add_entry():
         calories = int(request.form.get('calories'))
         water_intake = float(request.form.get('hydration'))
         running_mileage = float(request.form.get('running_mileage'))
+        
+        # Convert screen time from hours and minutes to decimal hours
+        screen_time_hours = int(request.form.get('screen_time_hours', 0))
+        screen_time_minutes = int(request.form.get('screen_time_minutes', 0))
+        screen_time = round(screen_time_hours + (screen_time_minutes / 60.0), 2)  # Truncate to 2 decimal places
+        
         notes = request.form.get('notes')
 
         print(f"Adding entry for user {current_user.id} on date {date}")  # Debug print
-        print(f"Data: sleep={sleep_hours}, calories={calories}, water={water_intake}, miles={running_mileage}")  # Debug print
+        print(f"Data: sleep={sleep_hours}, calories={calories}, water={water_intake}, miles={running_mileage}, screen={screen_time}")  # Debug print
 
         # Check if an entry for this date and user already exists
         existing_entry = Entry.query.filter_by(
@@ -161,6 +178,7 @@ def add_entry():
             existing_entry.calories = calories
             existing_entry.water_intake = water_intake
             existing_entry.running_mileage = running_mileage
+            existing_entry.screen_time = screen_time
             existing_entry.notes = notes
             db.session.commit()
             flash('Entry updated successfully!', category='success')
@@ -173,6 +191,7 @@ def add_entry():
             calories=calories,
             water_intake=water_intake,
             running_mileage=running_mileage,
+            screen_time=screen_time,
             notes=notes,
             user_id=current_user.id
         )
@@ -194,6 +213,12 @@ def edit_entry(entry_id):
         entry.calories = int(request.form['calories'])
         entry.water_intake = float(request.form['hydration'])
         entry.running_mileage = float(request.form['running_mileage'])
+        
+        # Convert screen time from hours and minutes to decimal hours
+        screen_time_hours = int(request.form.get('screen_time_hours', 0))
+        screen_time_minutes = int(request.form.get('screen_time_minutes', 0))
+        entry.screen_time = round(screen_time_hours + (screen_time_minutes / 60.0), 2)  # Truncate to 2 decimal places
+        
         entry.notes = request.form['notes']
         
         db.session.commit()  # Save the changes
@@ -228,7 +253,7 @@ def message_board():
             'id': message.id,
             'content': message.content,
             'user_id': message.user_id,
-            'username': message.author.first_name,
+            'username': message.author.username,
             'timestamp_ms': int(message.timestamp.timestamp() * 1000),  # Convert to milliseconds
             'formatted_time': formatted_time
         })
@@ -255,7 +280,7 @@ def handle_message(data):
         
         response_data = {
             'user_id': current_user.id,
-            'username': current_user.first_name,
+            'username': current_user.username,
             'content': message.content,
             'timestamp_ms': int(message.timestamp.timestamp() * 1000),  # Convert to milliseconds
             'formatted_time': formatted_time

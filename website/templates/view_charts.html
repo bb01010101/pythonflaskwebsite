@@ -46,6 +46,11 @@
                                 <canvas id="runningChart"></canvas>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="screenTimeChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -302,6 +307,13 @@
             'Miles'
         );
 
+        const screenTimeChart = createChart(
+            document.getElementById('screenTimeChart').getContext('2d'),
+            'Screen Time',
+            chartData[currentRange]['screen_time'],
+            'Hours'
+        );
+
         // Time range selector functionality
         document.querySelectorAll('[data-range]').forEach(button => {
             button.addEventListener('click', function() {
@@ -319,6 +331,7 @@
                 updateChart(caloriesChart, 'calories');
                 updateChart(waterChart, 'water_intake');
                 updateChart(runningChart, 'running_mileage');
+                updateChart(screenTimeChart, 'screen_time');
             });
         });
 

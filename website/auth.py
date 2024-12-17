@@ -12,10 +12,14 @@ auth = Blueprint('auth', __name__)
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
+        login_id = request.form.get('email')  # This will now be either email or username
         password = request.form.get('password')
 
-        user = User.query.filter_by(email=email).first()
+        # Try to find user by email first, then by username if not found
+        user = User.query.filter_by(email=login_id).first()
+        if not user:
+            user = User.query.filter_by(username=login_id).first()
+
         if user:
             if check_password_hash(user.password, password):
                 flash('Login successful!', category='success')
@@ -24,7 +28,7 @@ def login():
             else:
                 flash('Incorrect password.', category='error')
         else:
-            flash('Email does not exist.', category='error')
+            flash('Email or username not found.', category='error')
 
     return render_template("login.html", user=current_user)
 
@@ -44,9 +48,15 @@ def sign_up():
         password1 = request.form.get('password1')
         password2 = request.form.get('password2')
 
-        user = User.query.filter_by(email=email).first()
-        if user:
+        # Check for existing email
+        email_exists = User.query.filter_by(email=email).first()
+        # Check for existing username
+        username_exists = User.query.filter_by(username=username).first()
+
+        if email_exists:
             flash('Email already exists.', category='error')
+        elif username_exists:
+            flash('Username already taken. Please choose another.', category='error')
         elif len(email) < 4:
             flash('Email must be greater than 3 characters.', category='error')
         elif len(username) < 2:
@@ -102,27 +112,33 @@ def leaderboard():
         'running_mileage': Entry.running_mileage,
         'calories': Entry.calories,
         'water': Entry.water_intake,
-        'sleep': Entry.sleep_hours
+        'sleep': Entry.sleep_hours,
+        'screen_time': Entry.screen_time
     }
     
     metric_units = {
         'running_mileage': 'miles',
         'calories': 'kcal',
         'water': 'ml',
-        'sleep': 'hours'
+        'sleep': 'hours',
+        'screen_time': 'hours'
     }
     
     # Query to get aggregated data for the leaderboard
     query = db.session.query(
         User.id.label('user_id'),
-        User.first_name.label('username'),
+        User.username.label('username'),
         func.sum(metric_columns[metric]).label('score')
     ).join(Entry).filter(
         Entry.date >= start_date,
         Entry.date <= (end_date if timeframe != 'day' else today)
-    ).group_by(User.id, User.first_name).order_by(
-        func.sum(metric_columns[metric]).desc()
-    )
+    ).group_by(User.id, User.username)
+
+    # For screen time, we want to sort ascending (less is better)
+    if metric == 'screen_time':
+        query = query.order_by(func.sum(metric_columns[metric]).asc())
+    else:
+        query = query.order_by(func.sum(metric_columns[metric]).desc())
     
     print(f"SQL Query: {query}")  # Debug print
     

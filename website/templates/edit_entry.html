@@ -33,6 +33,26 @@
                         <input type="number" step="0.1" class="form-control" id="running_mileage" name="running_mileage" value="{{ entry.running_mileage }}" required>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="screen_time" class="form-label">Screen Time</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="screen_time_hours" name="screen_time_hours" 
+                                           min="0" value="{{ entry.screen_time|int }}" required>
+                                    <span class="input-group-text">hours</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="screen_time_minutes" name="screen_time_minutes" 
+                                           min="0" max="59" value="{{ ((entry.screen_time % 1) * 60)|int }}" required>
+                                    <span class="input-group-text">minutes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label for="notes">Notes:</label>
                         <textarea class="form-control" id="notes" name="notes" rows="3">{{ entry.notes }}</textarea>

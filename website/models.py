@@ -10,7 +10,7 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True)
     password = db.Column(db.String(150))
-    username = db.Column(db.String(150))
+    username = db.Column(db.String(150), unique=True)
     entries = db.relationship('Entry', backref='user', lazy=True)
     messages = db.relationship('Message', backref='author', lazy=True)
     posts = db.relationship('Post', backref='author', lazy=True)
@@ -24,6 +24,7 @@ class Entry(db.Model):
     calories = db.Column(db.Integer, default=0)
     water_intake = db.Column(db.Integer, default=0)
     running_mileage = db.Column(db.Float, default=0)
+    screen_time = db.Column(db.Float, default=0)  # Hours of screen time
     notes = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
@@ -59,8 +60,7 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     
-    # Relationships
-    author = db.relationship('User', backref=db.backref('comments', lazy=True))
+    # Single relationship definition
     post = db.relationship('Post', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
 
 

@@ -16,39 +16,101 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <!-- Column Selector Dropdown -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center">
+                            <label class="me-2 fw-bold">Show/Hide Columns:</label>
+                            <div class="dropdown">
+                                <button class="btn theme-btn-outline-dark dropdown-toggle" type="button" id="columnSelector" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-columns me-2"></i>Select Columns
+                                </button>
+                                <ul class="dropdown-menu column-menu p-2" aria-labelledby="columnSelector">
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-date" data-column="date" checked>
+                                            <label class="form-check-label" for="col-date">Date</label>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-sleep" data-column="sleep" checked>
+                                            <label class="form-check-label" for="col-sleep">Sleep Hours</label>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-calories" data-column="calories" checked>
+                                            <label class="form-check-label" for="col-calories">Calories</label>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-water" data-column="water" checked>
+                                            <label class="form-check-label" for="col-water">Water Intake</label>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-running" data-column="running" checked>
+                                            <label class="form-check-label" for="col-running">Running</label>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-screen" data-column="screen" checked>
+                                            <label class="form-check-label" for="col-screen">Screen Time</label>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-notes" data-column="notes" checked>
+                                            <label class="form-check-label" for="col-notes">Notes</label>
+                                        </div>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <div class="d-flex justify-content-between">
+                                            <button class="btn btn-sm theme-btn-outline-dark" id="selectAll">Select All</button>
+                                            <button class="btn btn-sm theme-btn-outline-dark" id="deselectAll">Deselect All</button>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Table -->
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="theme-table-header">
+                        <table class="table table-hover">
+                            <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Sleep Hours</th>
-                                    <th>Calories</th>
-                                    <th>Water Intake</th>
-                                    <th>Running Mileage</th>
-                                    <th>Notes</th>
-                                    <th>Actions</th>
+                                    <th class="col-date">Date</th>
+                                    <th class="col-sleep">Sleep Hours</th>
+                                    <th class="col-calories">Calories</th>
+                                    <th class="col-water">Water Intake (oz)</th>
+                                    <th class="col-running">Running (miles)</th>
+                                    <th class="col-screen">Screen Time (hrs)</th>
+                                    <th class="col-notes">Notes</th>
+                                    <th class="col-actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for entry in entries %}
                                 <tr>
-                                    <td>{{ entry.date.strftime('%b %d, %Y') }}</td>
-                                    <td>{{ entry.sleep_hours }}</td>
-                                    <td>{{ entry.calories }}</td>
-                                    <td>{{ entry.water_intake }} oz</td>
-                                    <td>{{ entry.running_mileage }} mi</td>
-                                    <td class="notes-cell">{{ entry.notes }}</td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <a href="{{ url_for('views.edit_entry', entry_id=entry.id) }}" 
-                                               class="btn btn-sm theme-btn me-1" 
-                                               title="Edit">
+                                    <td class="col-date">{{ entry.date.strftime('%b %d, %Y') }}</td>
+                                    <td class="col-sleep">{{ "%.1f"|format(entry.sleep_hours) }}</td>
+                                    <td class="col-calories">{{ entry.calories }}</td>
+                                    <td class="col-water">{{ "%.1f"|format(entry.water_intake) }}</td>
+                                    <td class="col-running">{{ "%.1f"|format(entry.running_mileage) }}</td>
+                                    <td class="col-screen">{{ "%.2f"|format(entry.screen_time) }}</td>
+                                    <td class="col-notes">{{ entry.notes }}</td>
+                                    <td class="col-actions">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('views.edit_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="{{ url_for('views.delete_entry', entry_id=entry.id) }}" 
-                                               class="btn btn-sm btn-danger" 
-                                               onclick="return confirm('Are you sure you want to delete this entry?')"
-                                               title="Delete">
+                                            <a href="{{ url_for('views.delete_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-delete" 
+                                               onclick="return confirm('Are you sure you want to delete this entry?')">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
@@ -72,27 +134,12 @@
         border: none;
     }
 
-    .theme-btn {
-        background-color: #2196F3;
-        color: white;
-        padding: 0.5rem 1rem;
-        border: none;
-        transition: all 0.2s ease;
-    }
-
-    .theme-btn:hover {
-        background-color: #1976D2;
-        color: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
     .theme-btn-outline {
         background-color: transparent;
         color: white;
         border: 2px solid white;
         padding: 0.5rem 1rem;
         transition: all 0.2s ease;
-        border-radius: 0.5rem;
     }
 
     .theme-btn-outline:hover {
@@ -100,68 +147,155 @@
         color: #2196F3;
     }
 
-    .theme-table-header {
+    .theme-btn-outline-dark {
         background-color: #f8f9fa;
+        color: #2196F3;
+        border: 2px solid #2196F3;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+        font-weight: 500;
     }
 
-    .theme-table-header th {
-        font-weight: 600;
-        color: #495057;
-        border-top: none;
+    .theme-btn-outline-dark:hover {
+        background-color: #2196F3;
+        color: white;
     }
 
-    .card {
+    .theme-btn-edit {
+        background-color: #4CAF50;
+        color: white;
         border: none;
-        border-radius: 1rem;
-        overflow: hidden;
+        margin-right: 0.25rem;
     }
 
-    .table {
-        margin-bottom: 0;
+    .theme-btn-edit:hover {
+        background-color: #45a049;
+        color: white;
     }
 
-    .table th, .table td {
-        padding: 1rem;
+    .theme-btn-delete {
+        background-color: #f44336;
+        color: white;
+        border: none;
+    }
+
+    .theme-btn-delete:hover {
+        background-color: #da190b;
+        color: white;
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .table td {
         vertical-align: middle;
     }
 
-    .table tbody tr {
-        transition: all 0.2s ease;
+    .column-menu {
+        min-width: 200px;
+        background-color: white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
     }
 
-    .table tbody tr:hover {
-        background-color: rgba(33, 150, 243, 0.05);
-    }
-
-    .notes-cell {
-        max-width: 200px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .btn-group .btn {
-        border-radius: 0.375rem;
-    }
-
-    .btn-danger {
-        background-color: #dc3545;
+    .dropdown-menu {
+        background-color: white;
         border: none;
+        padding: 0;
     }
 
-    .btn-danger:hover {
-        background-color: #c82333;
+    .column-menu .form-check {
+        padding: 0.5rem 1rem;
+        margin: 0;
+        background-color: white;
+    }
+
+    .column-menu .form-check:hover {
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+    }
+
+    .dropdown-divider {
+        margin: 0.5rem 0;
+        border-top: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .column-menu .btn-group {
+        background-color: white;
+        padding: 0.5rem;
+        width: 100%;
+    }
+
+    .column-menu .btn {
+        flex: 1;
+        margin: 0 0.25rem;
+    }
+
+    /* Card-like container for the buttons */
+    .column-menu li:last-child {
+        background-color: white;
+        border-top: 1px solid rgba(0,0,0,0.1);
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
     }
 
     /* Responsive adjustments */
     @media (max-width: 768px) {
-        .table th, .table td {
-            padding: 0.75rem;
-        }
-        
-        .notes-cell {
-            max-width: 150px;
+        .column-menu {
+            width: 100%;
         }
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all checkboxes
+    const checkboxes = document.querySelectorAll('.column-menu input[type="checkbox"]');
+    const selectAllBtn = document.getElementById('selectAll');
+    const deselectAllBtn = document.getElementById('deselectAll');
+
+    // Function to update column visibility
+    function updateColumnVisibility(checkbox) {
+        const columnClass = 'col-' + checkbox.dataset.column;
+        const cells = document.querySelectorAll('.' + columnClass);
+        cells.forEach(cell => {
+            cell.style.display = checkbox.checked ? '' : 'none';
+        });
+    }
+
+    // Add change event listener to each checkbox
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateColumnVisibility(this);
+        });
+    });
+
+    // Select All button
+    selectAllBtn.addEventListener('click', function(e) {
+        e.stopPropagation();  // Prevent dropdown from closing
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+            updateColumnVisibility(checkbox);
+        });
+    });
+
+    // Deselect All button
+    deselectAllBtn.addEventListener('click', function(e) {
+        e.stopPropagation();  // Prevent dropdown from closing
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            updateColumnVisibility(checkbox);
+        });
+    });
+
+    // Keep dropdown open when clicking checkboxes
+    document.querySelector('.column-menu').addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+});
+</script>
 {% endblock %}
