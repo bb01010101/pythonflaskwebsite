@@ -1,8 +1,0 @@
-name: health-tracker
-type: backend
-backend:
-  path: ./               # Root directory of your project
-  runtime: python        # Specify Python as the runtime
-  entrypoint: main.py    # Main Python file to run your project
-
-
