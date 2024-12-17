@@ -1,63 +1,194 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <h1 class="text-center mb-4 typewriter">Health Statistics Leaderboard</h1>
-    <h3 class="text-center mb-3">{{ selected_timeframe }} - 
-        {% if selected_metric == 'running_mileage' %}
-            Miles
-        {% else %}
-            {{ selected_metric|title }}
-        {% endif %}
-    </h3>
-    
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="GET" class="mb-3">
-                <div class="row">
-                    <div class="col-md-4">
-                        <select name="metric" class="form-control" id="metric-select">
-                            <option value="running_mileage" {% if selected_metric == 'running_mileage' %}selected{% endif %}>Running Mileage</option>
-                            <option value="calories" {% if selected_metric == 'calories' %}selected{% endif %}>Calories</option>
-                            <option value="water" {% if selected_metric == 'water' %}selected{% endif %}>Water Intake</option>
-                            <option value="sleep" {% if selected_metric == 'sleep' %}selected{% endif %}>Sleep Hours</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <select name="timeframe" class="form-control" id="timeframe-select">
-                            <option value="day" {% if request.args.get('timeframe') == 'day' %}selected{% endif %}>Today</option>
-                            <option value="week" {% if request.args.get('timeframe') == 'week' %}selected{% endif %}>This Week</option>
-                            <option value="month" {% if request.args.get('timeframe') == 'month' %}selected{% endif %}>This Month</option>
-                            <option value="year" {% if request.args.get('timeframe') == 'year' %}selected{% endif %}>This Year</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">Update Rankings</button>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header theme-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">
+                            <i class="fas fa-trophy me-2"></i>Health Statistics Leaderboard
+                        </h2>
+                        <span class="theme-subtitle">{{ selected_timeframe }}</span>
                     </div>
                 </div>
-            </form>
+                <div class="card-body">
+                    <!-- Filters -->
+                    <form method="GET" class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <select name="metric" class="form-select theme-select" id="metric-select">
+                                    <option value="running_mileage" {% if selected_metric == 'running_mileage' %}selected{% endif %}>Running Mileage</option>
+                                    <option value="calories" {% if selected_metric == 'calories' %}selected{% endif %}>Calories</option>
+                                    <option value="water" {% if selected_metric == 'water' %}selected{% endif %}>Water Intake</option>
+                                    <option value="sleep" {% if selected_metric == 'sleep' %}selected{% endif %}>Sleep Hours</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <select name="timeframe" class="form-select theme-select" id="timeframe-select">
+                                    <option value="day" {% if request.args.get('timeframe') == 'day' %}selected{% endif %}>Today</option>
+                                    <option value="week" {% if request.args.get('timeframe') == 'week' %}selected{% endif %}>This Week</option>
+                                    <option value="month" {% if request.args.get('timeframe') == 'month' %}selected{% endif %}>This Month</option>
+                                    <option value="year" {% if request.args.get('timeframe') == 'year' %}selected{% endif %}>This Year</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn theme-btn w-100">Update</button>
+                            </div>
+                        </div>
+                    </form>
 
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>User</th>
-                            <th>Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for entry in leaderboard %}
-                        <tr {% if entry.user_id == current_user.id %}class="table-primary"{% endif %}>
-                            <td>{{ loop.index }}</td>
-                            <td>{{ entry.username }}</td>
-                            <td>{{ entry.score }} {{ entry.unit }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                    <!-- Leaderboard Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="theme-table-header">
+                                <tr>
+                                    <th class="text-center" style="width: 80px">Rank</th>
+                                    <th>User</th>
+                                    <th class="text-end">Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in leaderboard %}
+                                <tr class="{% if entry.user_id == current_user.id %}highlight-row{% endif %}">
+                                    <td class="text-center">
+                                        {% if loop.index == 1 %}
+                                            <i class="fas fa-trophy text-gold"></i>
+                                        {% elif loop.index == 2 %}
+                                            <i class="fas fa-trophy text-silver"></i>
+                                        {% elif loop.index == 3 %}
+                                            <i class="fas fa-trophy text-bronze"></i>
+                                        {% else %}
+                                            {{ loop.index }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if entry.user_id == current_user.id %}
+                                            <strong>{{ entry.username }} (You)</strong>
+                                        {% else %}
+                                            {{ entry.username }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ entry.score }} {{ entry.unit }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .theme-header {
+        background-color: #FFD700;
+        color: #2C3E50;
+        padding: 1rem;
+        border: none;
+    }
+
+    .theme-subtitle {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #2C3E50;
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+    }
+
+    .theme-select {
+        border: 2px solid #FFD700;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        color: #2C3E50;
+        transition: all 0.2s ease;
+    }
+
+    .theme-select:focus {
+        border-color: #FFC107;
+        box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+    }
+
+    .theme-btn {
+        background-color: #FFD700;
+        color: #2C3E50;
+        border: none;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .theme-btn:hover {
+        background-color: #FFC107;
+        color: #2C3E50;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .theme-table-header {
+        background-color: #FFF8DC;
+    }
+
+    .theme-table-header th {
+        font-weight: 600;
+        color: #2C3E50;
+        border-top: none;
+    }
+
+    .card {
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table th, .table td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: rgba(255, 215, 0, 0.05);
+    }
+
+    .highlight-row {
+        background-color: rgba(255, 215, 0, 0.1);
+    }
+
+    .highlight-row:hover {
+        background-color: rgba(255, 215, 0, 0.15) !important;
+    }
+
+    .text-gold {
+        color: #FFD700;
+    }
+
+    .text-silver {
+        color: #C0C0C0;
+    }
+
+    .text-bronze {
+        color: #CD7F32;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .theme-subtitle {
+            display: none;
+        }
+        
+        .table th, .table td {
+            padding: 0.75rem;
+        }
+    }
+</style>
 {% endblock %} 

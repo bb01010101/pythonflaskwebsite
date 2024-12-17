@@ -1,13 +1,39 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
-from .models import User, Entry, Message
+from .models import User, Entry, Message, Post, Like, Comment
 from . import db, socketio
 import json
 import datetime
 from flask_socketio import emit
+import os
+from werkzeug.utils import secure_filename
 
 views = Blueprint('views', __name__)
+
+# Configure upload folder - use absolute path
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# Create upload folder if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def fix_timestamp(timestamp):
+    """Fix timestamps that might have incorrect year."""
+    if timestamp is None:
+        return datetime.datetime.now(datetime.timezone.utc)
+    
+    # If timestamp has no timezone info, assume it's UTC
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
+    
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if timestamp.year > now.year:
+        return timestamp.replace(year=now.year)
+    return timestamp
 
 @views.route('/', methods=['GET', 'POST'])
 @login_required
@@ -21,65 +47,78 @@ def view_charts():
     
     # Prepare data for charts
     chart_data = {
-        'daily': {},
-        'weekly': {},
-        'monthly': {},
-        'yearly': {}
+        'daily': {
+            'sleep_hours': {},
+            'calories': {},
+            'water_intake': {},
+            'running_mileage': {}
+        },
+        'weekly': {
+            'sleep_hours': {},
+            'calories': {},
+            'water_intake': {},
+            'running_mileage': {}
+        },
+        'monthly': {
+            'sleep_hours': {},
+            'calories': {},
+            'water_intake': {},
+            'running_mileage': {}
+        },
+        'yearly': {
+            'sleep_hours': {},
+            'calories': {},
+            'water_intake': {},
+            'running_mileage': {}
+        }
     }
     
     # Process daily data
     for entry in entries:
         date_str = entry.date.strftime('%Y-%m-%d')
-        chart_data['daily'][date_str] = {
-            'sleep_hours': entry.sleep_hours,
-            'calories': entry.calories,
-            'water_intake': entry.water_intake,
-            'running_mileage': entry.running_mileage
-        }
+        chart_data['daily']['sleep_hours'][date_str] = entry.sleep_hours
+        chart_data['daily']['calories'][date_str] = entry.calories
+        chart_data['daily']['water_intake'][date_str] = entry.water_intake
+        chart_data['daily']['running_mileage'][date_str] = entry.running_mileage
         
         # Process weekly data
         week_str = entry.date.strftime('%Y-W%W')
-        if week_str not in chart_data['weekly']:
-            chart_data['weekly'][week_str] = {
-                'sleep_hours': 0,
-                'calories': 0,
-                'water_intake': 0,
-                'running_mileage': 0
-            }
-        chart_data['weekly'][week_str]['sleep_hours'] += entry.sleep_hours
-        chart_data['weekly'][week_str]['calories'] += entry.calories
-        chart_data['weekly'][week_str]['water_intake'] += entry.water_intake
-        chart_data['weekly'][week_str]['running_mileage'] += entry.running_mileage
+        if week_str not in chart_data['weekly']['sleep_hours']:
+            chart_data['weekly']['sleep_hours'][week_str] = 0
+            chart_data['weekly']['calories'][week_str] = 0
+            chart_data['weekly']['water_intake'][week_str] = 0
+            chart_data['weekly']['running_mileage'][week_str] = 0
+        chart_data['weekly']['sleep_hours'][week_str] += entry.sleep_hours
+        chart_data['weekly']['calories'][week_str] += entry.calories
+        chart_data['weekly']['water_intake'][week_str] += entry.water_intake
+        chart_data['weekly']['running_mileage'][week_str] += entry.running_mileage
         
         # Process monthly data
         month_str = entry.date.strftime('%Y-%m')
-        if month_str not in chart_data['monthly']:
-            chart_data['monthly'][month_str] = {
-                'sleep_hours': 0,
-                'calories': 0,
-                'water_intake': 0,
-                'running_mileage': 0
-            }
-        chart_data['monthly'][month_str]['sleep_hours'] += entry.sleep_hours
-        chart_data['monthly'][month_str]['calories'] += entry.calories
-        chart_data['monthly'][month_str]['water_intake'] += entry.water_intake
-        chart_data['monthly'][month_str]['running_mileage'] += entry.running_mileage
+        if month_str not in chart_data['monthly']['sleep_hours']:
+            chart_data['monthly']['sleep_hours'][month_str] = 0
+            chart_data['monthly']['calories'][month_str] = 0
+            chart_data['monthly']['water_intake'][month_str] = 0
+            chart_data['monthly']['running_mileage'][month_str] = 0
+        chart_data['monthly']['sleep_hours'][month_str] += entry.sleep_hours
+        chart_data['monthly']['calories'][month_str] += entry.calories
+        chart_data['monthly']['water_intake'][month_str] += entry.water_intake
+        chart_data['monthly']['running_mileage'][month_str] += entry.running_mileage
         
         # Process yearly data
         year_str = entry.date.strftime('%Y')
-        if year_str not in chart_data['yearly']:
-            chart_data['yearly'][year_str] = {
-                'sleep_hours': 0,
-                'calories': 0,
-                'water_intake': 0,
-                'running_mileage': 0
-            }
-        chart_data['yearly'][year_str]['sleep_hours'] += entry.sleep_hours
-        chart_data['yearly'][year_str]['calories'] += entry.calories
-        chart_data['yearly'][year_str]['water_intake'] += entry.water_intake
-        chart_data['yearly'][year_str]['running_mileage'] += entry.running_mileage
+        if year_str not in chart_data['yearly']['sleep_hours']:
+            chart_data['yearly']['sleep_hours'][year_str] = 0
+            chart_data['yearly']['calories'][year_str] = 0
+            chart_data['yearly']['water_intake'][year_str] = 0
+            chart_data['yearly']['running_mileage'][year_str] = 0
+        chart_data['yearly']['sleep_hours'][year_str] += entry.sleep_hours
+        chart_data['yearly']['calories'][year_str] += entry.calories
+        chart_data['yearly']['water_intake'][year_str] += entry.water_intake
+        chart_data['yearly']['running_mileage'][year_str] += entry.running_mileage
     
-    print(f"Chart data: {chart_data}")  # Debug print
+    print("Entries found:", len(entries))  # Debug print
+    print("Chart data structure:", json.dumps(chart_data, indent=2))  # Debug print
     
     return render_template("view_charts.html", user=current_user, chart_data=chart_data)
 
@@ -175,47 +214,168 @@ def delete_entry(entry_id):
 @login_required
 def message_board():
     messages = Message.query.order_by(Message.timestamp.asc()).all()
-    print(f"Found {len(messages)} messages")  # Debug print
     
-    # Convert messages to JSON-serializable format
+    # Convert messages to JSON-serializable format with proper timestamp handling
     serialized_messages = []
     for message in messages:
+        # Fix timestamp if needed
+        message.timestamp = fix_timestamp(message.timestamp)
+        
+        # Format the timestamp for display
+        formatted_time = message.timestamp.strftime('%B %d, %Y at %I:%M %p')
+        
         serialized_messages.append({
             'id': message.id,
             'content': message.content,
             'user_id': message.user_id,
             'username': message.author.first_name,
-            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            'timestamp_ms': int(message.timestamp.timestamp() * 1000),  # Convert to milliseconds
+            'formatted_time': formatted_time
         })
-        print(f"Serialized message: {serialized_messages[-1]}")  # Debug print
     
     return render_template('message_board.html', messages=serialized_messages, user=current_user)
 
 @socketio.on('new_message')
 def handle_message(data):
-    print(f"Received message from user {current_user.id}: {data}")  # Debug print
     if not current_user.is_authenticated:
-        print("User not authenticated")  # Debug print
         return
     
     try:
+        # Create message with current UTC time
         message = Message(
             content=data['content'],
-            user_id=current_user.id
+            user_id=current_user.id,
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
         db.session.add(message)
         db.session.commit()
-        print(f"Saved message {message.id} to database")  # Debug print
+        
+        # Format timestamp for display
+        formatted_time = message.timestamp.strftime('%B %d, %Y at %I:%M %p')
         
         response_data = {
             'user_id': current_user.id,
             'username': current_user.first_name,
             'content': message.content,
-            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            'timestamp_ms': int(message.timestamp.timestamp() * 1000),  # Convert to milliseconds
+            'formatted_time': formatted_time
         }
-        print(f"Broadcasting message: {response_data}")  # Debug print
         emit('message', response_data, broadcast=True)
     except Exception as e:
-        print(f"Error handling message: {e}")  # Debug print
+        print(f"Error handling message: {e}")
         db.session.rollback()
+
+@views.route('/posts', methods=['GET'])
+@login_required
+def posts():
+    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    # Fix timestamps before sending to template
+    for post in posts:
+        post.timestamp = fix_timestamp(post.timestamp)
+        for comment in post.comments:
+            comment.timestamp = fix_timestamp(comment.timestamp)
+    return render_template('posts.html', user=current_user, posts=posts)
+
+@views.route('/create-post', methods=['GET', 'POST'])
+@login_required
+def create_post():
+    if request.method == 'POST':
+        content = request.form.get('content')
+        if not content:
+            flash('Post cannot be empty!', category='error')
+            return redirect(url_for('views.create_post'))
+
+        # Handle image upload
+        image_path = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '' and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                # Add timestamp to filename to make it unique
+                filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(file_path)
+                print(f"Saved image to: {file_path}")  # Debug print
+                image_path = filename
+
+        # Create new post with current UTC time
+        new_post = Post(
+            content=content,
+            image_path=image_path,
+            user_id=current_user.id,
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
+        )
+        db.session.add(new_post)
+        db.session.commit()
+        flash('Post created!', category='success')
+        return redirect(url_for('views.posts'))
+
+    return render_template('create_post.html', user=current_user)
+
+@views.route('/like-post/<int:post_id>', methods=['POST'])
+@login_required
+def like_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
+
+    if like:
+        db.session.delete(like)
+        db.session.commit()
+    else:
+        like = Like(user_id=current_user.id, post_id=post_id)
+        db.session.add(like)
+        db.session.commit()
+
+    return redirect(url_for('views.posts'))
+
+@views.route('/delete-post/<int:post_id>', methods=['POST'])
+@login_required
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.user_id != current_user.id:
+        flash('You cannot delete this post!', category='error')
+        return redirect(url_for('views.posts'))
+
+    # Delete associated image if it exists
+    if post.image_path:
+        image_path = os.path.join(UPLOAD_FOLDER, post.image_path)
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+    db.session.delete(post)
+    db.session.commit()
+    flash('Post deleted!', category='success')
+    return redirect(url_for('views.posts'))
+
+@views.route('/add-comment/<int:post_id>', methods=['POST'])
+@login_required
+def add_comment(post_id):
+    content = request.form.get('content')
+    if not content:
+        flash('Comment cannot be empty!', category='error')
+        return redirect(url_for('views.posts'))
+
+    post = Post.query.get_or_404(post_id)
+    new_comment = Comment(
+        content=content,
+        user_id=current_user.id,
+        post_id=post_id
+    )
+    db.session.add(new_comment)
+    db.session.commit()
+    flash('Comment added!', category='success')
+    return redirect(url_for('views.posts'))
+
+@views.route('/delete-comment/<int:comment_id>', methods=['POST'])
+@login_required
+def delete_comment(comment_id):
+    comment = Comment.query.get_or_404(comment_id)
+    if comment.user_id != current_user.id:
+        flash('You cannot delete this comment!', category='error')
+        return redirect(url_for('views.posts'))
+
+    db.session.delete(comment)
+    db.session.commit()
+    flash('Comment deleted!', category='success')
+    return redirect(url_for('views.posts'))
 

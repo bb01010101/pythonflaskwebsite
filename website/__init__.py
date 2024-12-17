@@ -7,6 +7,7 @@ from flask_socketio import SocketIO
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
+import datetime
 
 db = SQLAlchemy()
 DB_NAME = "database.db"
@@ -37,7 +38,7 @@ def create_app():
     app.register_blueprint(views, url_prefix='/') 
     
 
-    from .models import User, Entry
+    from .models import User, Entry, Message
 
     with app.app_context():
         db.create_all()
@@ -50,6 +51,34 @@ def create_app():
     def load_user(id):
         return User.query.get(int(id))
 
+    # Add timeago filter
+    def timeago(timestamp):
+        """Convert a timestamp to '... ago' text."""
+        if timestamp is None:
+            return ''
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
+
+        diff = now - timestamp
+
+        if diff.days > 365:
+            return timestamp.strftime('%d %b %Y')
+        elif diff.days > 30:
+            months = diff.days // 30
+            return f"{months}mo ago"
+        elif diff.days > 0:
+            return f"{diff.days}d ago"
+        elif diff.seconds > 3600:
+            return f"{diff.seconds // 3600}h ago"
+        elif diff.seconds > 60:
+            return f"{diff.seconds // 60}m ago"
+        else:
+            return "just now"
+
+    app.jinja_env.filters['timeago'] = timeago
+    
     return app
 
 def create_database(app):

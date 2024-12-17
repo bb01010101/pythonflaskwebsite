@@ -1,125 +1,332 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if user.is_authenticated %}
 <div class="container mt-4">
-    <h2 class="mb-4 text-center typewriter">Metrics Charts</h2>
     <div class="row justify-content-center">
         <div class="col-md-10">
-            <div class="card p-4 shadow-sm">
-                <div class="form-group">
-                    <label for="aggregation" class="font-weight-bold">Choose Time Frame:</label>
-                    <select id="aggregation" class="form-control mb-4">
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
-                    </select>
+            <div class="card shadow-sm mb-4">
+                <div class="card-header theme-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>Your Progress Charts
+                        </h2>
+                        <a href="{{ url_for('views.add_entry') }}" class="btn theme-btn-outline">
+                            <i class="fas fa-plus me-2"></i>Add Entry
+                        </a>
+                    </div>
                 </div>
+                <div class="card-body">
+                    <!-- Time Range Selector -->
+                    <div class="btn-group mb-4" role="group">
+                        <button type="button" class="btn theme-btn-outline-dark active" data-range="daily">Daily</button>
+                        <button type="button" class="btn theme-btn-outline-dark" data-range="weekly">Weekly</button>
+                        <button type="button" class="btn theme-btn-outline-dark" data-range="monthly">Monthly</button>
+                        <button type="button" class="btn theme-btn-outline-dark" data-range="yearly">Yearly</button>
+                    </div>
 
-                <!-- Chart.js Canvas for Separate Charts -->
-                <div class="chart-container mb-4">
-                    <canvas id="sleep-chart"></canvas>
-                </div>
-                <div class="chart-container mb-4">
-                    <canvas id="calories-chart"></canvas>
-                </div>
-                <div class="chart-container mb-4">
-                    <canvas id="water-intake-chart"></canvas>
-                </div>
-                <div class="chart-container mb-4">
-                    <canvas id="running-chart"></canvas>
+                    <!-- Charts Container -->
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="sleepChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="caloriesChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="waterChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="runningChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+    .theme-header {
+        background-color: #9C27B0;
+        color: white;
+        padding: 1rem;
+        border: none;
+    }
+
+    .theme-btn-outline {
+        background-color: transparent;
+        color: white;
+        border: 2px solid white;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+        border-radius: 0.5rem;
+    }
+
+    .theme-btn-outline:hover {
+        background-color: white;
+        color: #9C27B0;
+    }
+
+    .theme-btn-outline-dark {
+        background-color: transparent;
+        color: #495057;
+        border: 2px solid #9C27B0;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .theme-btn-outline-dark:hover,
+    .theme-btn-outline-dark.active {
+        background-color: #9C27B0;
+        color: white;
+        border-color: #9C27B0;
+    }
+
+    .card {
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .chart-container {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        height: 300px;
+        position: relative;
+    }
+
+    /* Chart Customization */
+    canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Button Group Styling */
+    .btn-group {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .btn-group .btn {
+        border-radius: 0;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    .btn-group .btn:first-child {
+        border-top-left-radius: 0.5rem;
+        border-bottom-left-radius: 0.5rem;
+    }
+
+    .btn-group .btn:last-child {
+        border-top-right-radius: 0.5rem;
+        border-bottom-right-radius: 0.5rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 250px;
+            padding: 1rem;
+        }
+
+        .btn-group {
+            width: 100%;
+            display: flex;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-    // Data passed from Flask
-    const chartData = {{ chart_data|tojson | safe }};
-    console.log(chartData);
+    // Chart.js configuration and data
+    const chartData = {{ chart_data|tojson|safe }};
+    console.log('Chart data:', chartData); // Debug log
+    let currentRange = 'daily';
+    
+    // Chart colors
+    const chartColors = {
+        purple: '#9C27B0',
+        purpleLight: 'rgba(156, 39, 176, 0.2)',
+        purpleBorder: 'rgba(156, 39, 176, 0.8)'
+    };
 
-    const charts = {};
+    // Common chart options
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    };
 
-    // Function to create or update a chart
-    function createChart(chartId, label, data, borderColor, backgroundColor) {
-        const ctx = document.getElementById(chartId).getContext('2d');
-        if (charts[chartId]) {
-            charts[chartId].data.labels = data.labels;
-            charts[chartId].data.datasets[0].data = data.values;
-            charts[chartId].update();
-        } else {
-            charts[chartId] = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        label: label,
-                        data: data.values,
-                        borderColor: borderColor,
-                        backgroundColor: backgroundColor,
-                        borderWidth: 2,
-                        fill: false
-                    }]
+    // Create charts
+    function createChart(ctx, label, data, yAxisLabel) {
+        // Convert date strings to formatted dates
+        const formattedLabels = Object.keys(data).map(dateStr => {
+            const date = new Date(dateStr);
+            if (currentRange === 'daily') {
+                return date.toLocaleDateString('en-US', { 
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            } else if (currentRange === 'weekly') {
+                // For weekly data, show the week's start date
+                return `Week of ${date.toLocaleDateString('en-US', { 
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                })}`;
+            } else if (currentRange === 'monthly') {
+                return date.toLocaleDateString('en-US', { 
+                    month: 'short',
+                    year: 'numeric'
+                });
+            } else {
+                return date.toLocaleDateString('en-US', { 
+                    year: 'numeric'
+                });
+            }
+        });
+
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: formattedLabels,
+                datasets: [{
+                    label: label,
+                    data: Object.values(data),
+                    borderColor: chartColors.purple,
+                    backgroundColor: chartColors.purpleLight,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    title: {
+                        display: true,
+                        text: label,
+                        color: '#495057',
+                        font: {
+                            size: 16,
+                            weight: '600'
+                        }
+                    }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: true }
+                scales: {
+                    ...commonOptions.scales,
+                    x: {
+                        ...commonOptions.scales.x,
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
                     },
-                    scales: {
-                        x: {
-                            type: 'category'
-                        },
-                        y: {
-                            beginAtZero: true
+                    y: {
+                        ...commonOptions.scales.y,
+                        title: {
+                            display: true,
+                            text: yAxisLabel
                         }
                     }
                 }
-            });
-        }
+            }
+        });
     }
 
-    // Function to update charts based on aggregation type
-    function updateCharts(aggregation) {
-        const data = chartData[aggregation];
-        const labels = Object.keys(data);
-        const values = Object.values(data);
-
-        createChart('sleep-chart', 'Sleep Hours', {
-            labels: labels,
-            values: values.map(v => v.sleep_hours)
-        }, 'blue', 'rgba(0, 0, 255, 0.1)');
+    // Initialize charts
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing charts...'); // Debug log
         
-        createChart('calories-chart', 'Calories', {
-            labels: labels,
-            values: values.map(v => v.calories)
-        }, 'red', 'rgba(255, 0, 0, 0.1)');
+        const sleepChart = createChart(
+            document.getElementById('sleepChart').getContext('2d'),
+            'Sleep Hours',
+            chartData[currentRange]['sleep_hours'],
+            'Hours'
+        );
 
-        createChart('water-intake-chart', 'Water Intake (ml)', {
-            labels: labels,
-            values: values.map(v => v.water_intake)
-        }, 'green', 'rgba(0, 255, 0, 0.1)');
+        const caloriesChart = createChart(
+            document.getElementById('caloriesChart').getContext('2d'),
+            'Calories',
+            chartData[currentRange]['calories'],
+            'Calories'
+        );
 
-        createChart('running-chart', 'Running Mileage', {
-            labels: labels,
-            values: values.map(v => v.running_mileage)
-        }, 'purple', 'rgba(128, 0, 128, 0.1)');
-    }
+        const waterChart = createChart(
+            document.getElementById('waterChart').getContext('2d'),
+            'Water Intake',
+            chartData[currentRange]['water_intake'],
+            'Ounces'
+        );
 
-    // Event listener for dropdown change
-    document.getElementById('aggregation').addEventListener('change', function () {
-        updateCharts(this.value);
+        const runningChart = createChart(
+            document.getElementById('runningChart').getContext('2d'),
+            'Running Mileage',
+            chartData[currentRange]['running_mileage'],
+            'Miles'
+        );
+
+        // Time range selector functionality
+        document.querySelectorAll('[data-range]').forEach(button => {
+            button.addEventListener('click', function() {
+                const range = this.dataset.range;
+                currentRange = range;
+                
+                // Update active button
+                document.querySelectorAll('[data-range]').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+
+                // Update charts
+                updateChart(sleepChart, 'sleep_hours');
+                updateChart(caloriesChart, 'calories');
+                updateChart(waterChart, 'water_intake');
+                updateChart(runningChart, 'running_mileage');
+            });
+        });
+
+        function updateChart(chart, metric) {
+            chart.data.labels = Object.keys(chartData[currentRange][metric]);
+            chart.data.datasets[0].data = Object.values(chartData[currentRange][metric]);
+            chart.update();
+        }
     });
-
-    // Initialize charts with daily data
-    updateCharts('daily');
 </script>
-{% else %}
-    <!-- Content for non-logged-in users -->
-    <p>Please log in.</p>
-{% endif %}
 {% endblock %}

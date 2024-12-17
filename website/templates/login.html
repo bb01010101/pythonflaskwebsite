@@ -1,38 +1,117 @@
-{% extends "base.html" %} {% block title %}Login{% endblock %}
+{% extends "base.html" %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card p-4 shadow-sm">
-                <h2 class="mb-4 text-center typewriter">Login</h2>
-                <form method="POST">
-                    <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <input 
-                            type="email" 
-                            class="form-control" 
-                            id="email" 
-                            name="email"
-                            placeholder="Enter email"
-                        />
+            <div class="card shadow-sm">
+                <div class="card-header theme-header">
+                    <h2 class="mb-0">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </h2>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" 
+                                   class="form-control theme-input" 
+                                   id="email" 
+                                   name="email" 
+                                   placeholder="Enter your email">
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" 
+                                   class="form-control theme-input" 
+                                   id="password" 
+                                   name="password" 
+                                   placeholder="Enter your password">
+                        </div>
+                        <button type="submit" class="btn theme-btn w-100">Login</button>
+                    </form>
+                    <div class="text-center mt-4">
+                        <p class="signup-text">Don't have an account? 
+                            <a href="/sign-up" class="theme-link">Sign Up</a>
+                        </p>
                     </div>
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input 
-                            type="password" 
-                            class="form-control" 
-                            id="password" 
-                            name="password"
-                            placeholder="Enter password"
-                        />
-                    </div>
-                    <div class="text-center">
-                        <button type="submit" class="btn btn-primary">Login</button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .theme-header {
+        background-color: #40E0D0;
+        color: white;
+        padding: 1.5rem;
+        border: none;
+    }
+
+    .theme-header h2 {
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+
+    .card {
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #2C3E50;
+        margin-bottom: 0.5rem;
+    }
+
+    .theme-input {
+        border: 2px solid #e0e0e0;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .theme-input:focus {
+        border-color: #40E0D0;
+        box-shadow: 0 0 0 0.2rem rgba(64, 224, 208, 0.25);
+    }
+
+    .theme-btn {
+        background-color: #40E0D0;
+        color: white;
+        padding: 0.75rem;
+        font-weight: 500;
+        font-size: 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .theme-btn:hover {
+        background-color: #3BC7B9;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .signup-text {
+        color: #666;
+        font-size: 0.95rem;
+        margin-bottom: 0;
+    }
+
+    .theme-link {
+        color: #40E0D0;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .theme-link:hover {
+        color: #3BC7B9;
+        text-decoration: underline;
+    }
+</style>
 {% endblock %}

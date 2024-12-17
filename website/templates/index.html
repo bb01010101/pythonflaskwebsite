@@ -1,39 +1,214 @@
 {% extends "base.html" %}
 
+{% block title %}Home{% endblock %}
+
 {% block content %}
-{% if user.is_authenticated %}
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card p-4 shadow-sm">
-                <h1 class="mb-4 typewriter">Welcome, {{ user.first_name }}!</h1>
-                <div class="card-body">
-                    <p class="lead text-center typewriter">Track your sleep, calories, hydration, running mileage, and notes</p>
-                    <p class="lead text-center typewriter"><i><em>all in one place</em></i>.</p>
-                    <div class="text-center mt-4 button-container">
-                        <a href="{{ url_for('views.add_entry') }}" class="btn btn-primary m-2">New Entry</a>
-                        <a href="{{ url_for('views.view_data') }}" class="btn btn-info m-2">Your Data</a>
-                        <a href="{{ url_for('views.view_charts') }}" class="btn btn-success m-2">Your Charts</a>
-                        <a href="{{ url_for('auth.leaderboard') }}" class="btn btn-danger m-2">Leaderboard</a>
-                        <a href="{{ url_for('views.message_board') }}" class="btn m-2 text-white" style="background-color: #FF9F45;">Message Board</a>
+    <div class="text-center mb-4 welcome-section">
+        <h1 class="welcome-title">Welcome, {{ user.username }}</h1>
+        <p class="welcome-subtitle">Track your progress, compete against friends, and share your journey!</p>
+    </div>
+    <div class="row g-4 justify-content-center">
+        <div class="col-sm-6 col-lg-4">
+            <a href="/add_entry" class="card-link">
+                <div class="card feature-card green-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-plus-circle feature-icon"></i>
+                        <h3 class="card-title mt-2">Add Entry</h3>
+                        <p class="card-text">Record your daily health and fitness data</p>
                     </div>
                 </div>
-            </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/view_data" class="card-link">
+                <div class="card feature-card blue-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-table feature-icon"></i>
+                        <h3 class="card-title mt-2">View Data</h3>
+                        <p class="card-text">See your health tracking history</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/view_charts" class="card-link">
+                <div class="card feature-card purple-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-chart-bar feature-icon"></i>
+                        <h3 class="card-title mt-2">Charts</h3>
+                        <p class="card-text">Visualize your progress over time</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="{{ url_for('auth.leaderboard') }}" class="card-link">
+                <div class="card feature-card gold-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-trophy feature-icon"></i>
+                        <h3 class="card-title mt-2">Leaderboard</h3>
+                        <p class="card-text">Compare your progress with others</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/message_board" class="card-link">
+                <div class="card feature-card orange-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-comments feature-icon"></i>
+                        <h3 class="card-title mt-2">Messages</h3>
+                        <p class="card-text">Chat with other community members</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/posts" class="card-link">
+                <div class="card feature-card rose-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-stream feature-icon"></i>
+                        <h3 class="card-title mt-2">Feed</h3>
+                        <p class="card-text">Share and view community posts</p>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
-</div>
-{% else %}
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
+
+    {% if not user.is_authenticated %}
+    <div class="row mt-4">
+        <div class="col-md-8 mx-auto text-center">
             <h1 class="display-4">Welcome to Health Tracker</h1>
-            <p class="lead typewriter">Please log in or sign up to start tracking your health metrics.</p>
+            <p class="lead">Please log in or sign up to start tracking your health metrics.</p>
             <div class="mt-4">
-                <a href="{{ url_for('auth.login') }}" class="btn btn-primary mr-2">Login</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary me-2">Login</a>
                 <a href="{{ url_for('auth.sign_up') }}" class="btn btn-success">Sign Up</a>
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
-{% endif %}
+
+<style>
+    .welcome-section {
+        margin-bottom: 2.5rem;
+    }
+
+    .welcome-title {
+        font-weight: 600;
+        font-size: 2.2rem;
+        color: #2C3E50;
+        margin-bottom: 0.75rem;
+    }
+
+    .welcome-subtitle {
+        font-size: 1.1rem;
+        color: #666;
+        font-weight: 500;
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+
+    .welcome-card {
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .welcome-card h1 {
+        color: #333;
+        font-weight: 600;
+    }
+
+    .welcome-card .lead {
+        color: #666;
+    }
+
+    .card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .feature-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .feature-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .card-title {
+        font-weight: 600;
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .card-text {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    /* Color schemes for each card */
+    .green-card {
+        background-color: #4CAF50;
+        color: white;
+    }
+    .green-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .blue-card {
+        background-color: #2196F3;
+        color: white;
+    }
+    .blue-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .purple-card {
+        background-color: #9C27B0;
+        color: white;
+    }
+    .purple-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .gold-card {
+        background-color: #FFC107;
+        color: white;
+    }
+    .gold-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .orange-card {
+        background-color: #FF9F45;
+        color: white;
+    }
+    .orange-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .rose-card {
+        background-color: #E91E63;
+        color: white;
+    }
+    .rose-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+</style>
 {% endblock %}
