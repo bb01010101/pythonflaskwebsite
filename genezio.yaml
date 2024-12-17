@@ -1,6 +1,3 @@
-name: my-backend
-type: backend
-backend:
-  path: ./backend  # Path to your backend code
-  runtime: nodejs  # Runtime for your backend (nodejs, python, etc.)
-  entrypoint: index.js  # Your backend entry point file
+name: HealthTracker
+region: us-east-1
+yamlVersion: 2
