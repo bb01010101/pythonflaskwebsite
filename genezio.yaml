@@ -1,6 +1,6 @@
-name: my-backend
+name: my-python-project
 type: backend
 backend:
-  path: ./backend  # Path to your backend code
-  runtime: nodejs  # Runtime for your backend (nodejs, python, etc.)
-  entrypoint: index.js  # Your backend entry point file
+  path: ./               # Root directory of your project
+  runtime: python        # Specify Python as the runtime
+  entrypoint: main.py    # Main Python file to run your project
