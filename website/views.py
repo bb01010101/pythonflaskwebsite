@@ -246,8 +246,23 @@ def message_board():
         # Fix timestamp if needed
         message.timestamp = fix_timestamp(message.timestamp)
         
-        # Format the timestamp for display
-        formatted_time = message.timestamp.strftime('%B %d, %Y at %I:%M %p')
+        # Get current time in UTC
+        now = datetime.datetime.now(datetime.timezone.utc)
+        diff = now - message.timestamp
+        
+        # Format relative time
+        if diff.days > 365:
+            formatted_time = f"{diff.days // 365}y ago"
+        elif diff.days > 30:
+            formatted_time = f"{diff.days // 30}mo ago"
+        elif diff.days > 0:
+            formatted_time = f"{diff.days}d ago"
+        elif diff.seconds >= 3600:
+            formatted_time = f"{diff.seconds // 3600}h ago"
+        elif diff.seconds >= 60:
+            formatted_time = f"{diff.seconds // 60}m ago"
+        else:
+            formatted_time = "just now"
         
         serialized_messages.append({
             'id': message.id,
@@ -275,8 +290,8 @@ def handle_message(data):
         db.session.add(message)
         db.session.commit()
         
-        # Format timestamp for display
-        formatted_time = message.timestamp.strftime('%B %d, %Y at %I:%M %p')
+        # Format relative time for new message
+        formatted_time = "just now"
         
         response_data = {
             'user_id': current_user.id,
