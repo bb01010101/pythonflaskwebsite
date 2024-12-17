@@ -8,8 +8,4 @@ entrypoint: main.py    # Main Python file to run your project
 name: HealthTracker
 region: us-east-1
 yamlVersion: 2
-=======
-name: HealthTracker
-region: us-east-1
-yamlVersion: 2
->>>>>>> 0039bf1fd775d42441caee3cb61ce8fdae84a2fb
+
