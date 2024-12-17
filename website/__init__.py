@@ -35,22 +35,23 @@ def create_app():
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
     db.init_app(app)
     migrate = Migrate(app, db)
     socketio.init_app(app)
 
     from .views import views 
     from .auth import auth 
-
-     
+    
     app.register_blueprint(auth, url_prefix='/') 
     app.register_blueprint(views, url_prefix='/') 
-    
 
     from .models import User, Entry, Message
 
-    with app.app_context():
-        db.create_all()
+    # Only create tables if using SQLite
+    if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+        with app.app_context():
+            db.create_all()
 
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
