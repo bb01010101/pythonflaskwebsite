@@ -8,3 +8,4 @@ Werkzeug==2.3.7
 python-socketio==5.11.4
 python-engineio==4.10.1
 simple-websocket==1.1.0
+gunicorn==21.2.0
