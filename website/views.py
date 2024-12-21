@@ -395,13 +395,14 @@ def like_post(post_id):
 def delete_post(post_id):
     """
     Handle post deletion:
-    - Verify the current user owns the post
+    - Allow admin user 'bri' to delete any post
+    - Allow regular users to delete only their own posts
     - Delete associated image file if it exists
     - Remove post from database
     """
     post = Post.query.get_or_404(post_id)
-    # Check if current user is the post author
-    if post.user_id != current_user.id:
+    # Check if current user is either the post author or the admin user 'bri'
+    if post.user_id != current_user.id and current_user.username != 'bri':
         flash('You cannot delete this post!', category='error')
         return redirect(url_for('views.posts'))
 
@@ -414,7 +415,12 @@ def delete_post(post_id):
     # Delete post from database
     db.session.delete(post)
     db.session.commit()
-    flash('Post deleted!', category='success')
+    
+    # Show appropriate success message
+    if current_user.username == 'bri' and post.user_id != current_user.id:
+        flash('Post deleted by admin!', category='success')
+    else:
+        flash('Post deleted!', category='success')
     return redirect(url_for('views.posts'))
 
 @views.route('/add-comment/<int:post_id>', methods=['POST'])
