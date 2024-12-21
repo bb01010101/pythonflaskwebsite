@@ -17,12 +17,12 @@ load_dotenv()
 # Initialize database
 db = SQLAlchemy()
 
-# Initialize Socket.IO with production configuration
+# Initialize Socket.IO with proper async mode
 socketio = SocketIO(
     logger=True,
     engineio_logger=True,
     cors_allowed_origins="*",
-    async_mode='gevent'
+    async_mode=None  # Let SocketIO choose the best async mode
 )
 
 DB_NAME = "database.db"
@@ -43,7 +43,11 @@ def create_app():
     
     db.init_app(app)
     migrate = Migrate(app, db)
-    socketio.init_app(app)
+    
+    # Initialize Socket.IO with the app
+    socketio.init_app(app, 
+                     cors_allowed_origins="*",
+                     async_mode=None)  # Let SocketIO choose the best async mode
 
     from .views import views 
     from .auth import auth 
