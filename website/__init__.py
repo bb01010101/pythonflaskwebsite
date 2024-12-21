@@ -9,10 +9,23 @@ from sqlalchemy.engine import Engine
 import sqlite3
 import datetime
 import os
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+
+# Initialize database
 db = SQLAlchemy()
+
+# Initialize Socket.IO with production configuration
+socketio = SocketIO(
+    logger=True,
+    engineio_logger=True,
+    cors_allowed_origins="*",
+    async_mode='gevent'
+)
+
 DB_NAME = "database.db"
-socketio = SocketIO()
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -25,7 +38,7 @@ def create_app():
     app = Flask(__name__)
     app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False') == 'True'
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///database.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     db.init_app(app)
