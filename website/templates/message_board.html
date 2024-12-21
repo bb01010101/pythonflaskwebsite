@@ -130,61 +130,109 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
-    // Get the current URL's protocol and host
-    const protocol = window.location.protocol;
-    const isSecure = protocol === 'https:';
-    
-    // Configure Socket.IO connection
-    const socket = io({
-        transports: ['websocket'],
-        secure: isSecure,
-        rejectUnauthorized: false,
-        path: '/socket.io'
-    });
+    const socket = io();
+    const messageContainer = document.getElementById('message-container');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
 
-    // Handle form submission
-    document.getElementById('message-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const messageInput = document.getElementById('message-input');
-        const content = messageInput.value.trim();
+    // Function to format the date in a user-friendly way
+    function formatDate(timestampMs, originalDate) {
+        const date = new Date(parseInt(timestampMs));
+        const now = new Date();
         
+        // Check if the date is valid
+        if (isNaN(date.getTime())) {
+            return originalDate;
+        }
+
+        // Calculate time difference
+        const diff = now.getTime() - date.getTime();
+        
+        // If the difference is negative or too large, use original date
+        if (diff < 0 || diff > 7 * 24 * 60 * 60 * 1000) {
+            return originalDate;
+        }
+        
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (seconds < 30) {
+            return 'just now';
+        } else if (seconds < 60) {
+            return `${seconds}s ago`;
+        } else if (minutes < 60) {
+            return `${minutes}m ago`;
+        } else if (hours < 24) {
+            return `${hours}h ago`;
+        } else {
+            return `${days}d ago`;
+        }
+    }
+
+    function updateTimestamps() {
+        const timestamps = document.querySelectorAll('.timestamp');
+        timestamps.forEach(function(element) {
+            const timestamp = element.dataset.timestamp;
+            const originalDate = element.dataset.original;
+            element.textContent = formatDate(timestamp, originalDate);
+        });
+    }
+
+    function appendMessage(data) {
+        const messageDiv = document.createElement('div');
+        const isCurrentUser = data.user_id === {{ current_user.id }};
+        messageDiv.className = `message mb-3 ${isCurrentUser ? 'message-right' : 'message-left'}`;
+        
+        const timestamp = Date.now();
+        const formattedDate = new Date().toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true
+        });
+
+        messageDiv.innerHTML = `
+            <div class="message-bubble ${isCurrentUser ? 'my-message' : 'other-message'}">
+                <div class="message-info">
+                    <strong class="message-author">${data.username}</strong>
+                    <small class="timestamp ${isCurrentUser ? 'text-white-50' : 'text-muted'}" 
+                           data-timestamp="${timestamp}" 
+                           data-original="${formattedDate}">
+                        just now
+                    </small>
+                </div>
+                <div class="message-content">${data.content}</div>
+            </div>
+        `;
+        
+        messageContainer.appendChild(messageDiv);
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+
+    messageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const content = messageInput.value.trim();
         if (content) {
             socket.emit('new_message', { content: content });
             messageInput.value = '';
         }
     });
 
-    // Handle incoming messages
     socket.on('message', function(data) {
-        const messageContainer = document.getElementById('message-container');
-        const isCurrentUser = data.user_id === {{ current_user.id }};
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message mb-3 ${isCurrentUser ? 'message-right' : 'message-left'}`;
-        
-        messageDiv.innerHTML = `
-            <div class="message-bubble ${isCurrentUser ? 'my-message' : 'other-message'}">
-                <div class="message-content">
-                    <div class="message-header">
-                        <strong class="message-author">${data.username}</strong>
-                        <small class="message-time">${data.formatted_time}</small>
-                    </div>
-                    <p class="message-text">${data.content}</p>
-                </div>
-            </div>
-        `;
-        
-        messageContainer.appendChild(messageDiv);
-        messageContainer.scrollTop = messageContainer.scrollHeight;
+        appendMessage(data);
     });
 
-    // Add error handling for socket connection
-    socket.on('connect_error', (error) => {
-        console.error('Socket.IO connection error:', error);
-    });
+    // Update timestamps every 30 seconds
+    setInterval(updateTimestamps, 30000);
 
-    socket.on('connect', () => {
-        console.log('Socket.IO connected successfully');
-    });
+    // Initial timestamp update
+    document.addEventListener('DOMContentLoaded', updateTimestamps);
+
+    // Auto-scroll to bottom on load
+    messageContainer.scrollTop = messageContainer.scrollHeight;
 </script>
 {% endblock %} 
