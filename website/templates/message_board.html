@@ -8,21 +8,23 @@
                 <div class="card-header" style="background-color: #FF9F45;">
                     <h2 class="mb-0 text-white">Message Board</h2>
                 </div>
-                <div class="card-body">
-                    <div id="message-container" class="mb-4" style="max-height: 500px; overflow-y: auto;">
-                        {% for message in messages %}
-                        <div class="message mb-3 {% if message.user_id == current_user.id %}message-right{% else %}message-left{% endif %}">
-                            <div class="message-bubble {% if message.user_id == current_user.id %}my-message{% else %}other-message{% endif %}">
-                                <div class="message-content">
-                                    <div class="message-header">
-                                        <strong class="message-author">{{ message.username }}</strong>
-                                        <small class="message-time">{{ message.formatted_time }}</small>
+                <div class="card-body d-flex flex-column">
+                    <div id="message-container" class="mb-4 flex-grow-1" style="height: 500px; overflow-y: auto; display: flex; flex-direction: column;">
+                        <div id="messages-wrapper">
+                            {% for message in messages|reverse %}
+                            <div class="message mb-3">
+                                <div class="message-bubble {% if message.user_id == current_user.id %}my-message float-end{% else %}other-message float-start{% endif %}">
+                                    <div class="message-content">
+                                        <div class="message-header">
+                                            <strong class="message-author">{{ message.username }}</strong>
+                                            <small class="message-time">{{ message.formatted_time }}</small>
+                                        </div>
+                                        <p class="message-text">{{ message.content }}</p>
                                     </div>
-                                    <p class="message-text">{{ message.content }}</p>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                     <form id="message-form" class="mt-3">
                         <div class="input-group">
@@ -41,31 +43,28 @@
 <style>
     .message {
         margin-bottom: 1rem;
-    }
-    
-    .message-left {
-        text-align: left;
-    }
-    
-    .message-right {
-        text-align: right;
+        clear: both;
+        width: 100%;
     }
     
     .message-bubble {
         display: inline-block;
         max-width: 80%;
-        padding: 0.5rem 1rem;
+        padding: 0.75rem 1rem;
         border-radius: 1rem;
+        position: relative;
     }
     
     .my-message {
         background-color: #FF9F45;
         color: white;
+        border-bottom-right-radius: 0.25rem;
     }
     
     .other-message {
         background-color: #f0f0f0;
         color: #333;
+        border-bottom-left-radius: 0.25rem;
     }
     
     .message-header {
@@ -75,6 +74,8 @@
     
     .message-time {
         color: rgba(255, 255, 255, 0.8);
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
     }
     
     .other-message .message-time {
@@ -85,21 +86,45 @@
         margin: 0;
         word-break: break-word;
     }
+
+    #message-container {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 159, 69, 0.5) transparent;
+    }
+
+    #message-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #message-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #message-container::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 159, 69, 0.5);
+        border-radius: 3px;
+    }
+
+    #messages-wrapper {
+        margin-top: auto;
+        width: 100%;
+    }
 </style>
 
 <script>
     let lastMessageId = {{ messages[0].id if messages else 0 }};
     const messageContainer = document.getElementById('message-container');
+    const messagesWrapper = document.getElementById('messages-wrapper');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
 
     // Function to add a new message to the container
     function addMessage(message) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message mb-3 ${message.user_id == {{ current_user.id }} ? 'message-right' : 'message-left'}`;
+        messageDiv.className = 'message mb-3';
         
         messageDiv.innerHTML = `
-            <div class="message-bubble ${message.user_id == {{ current_user.id }} ? 'my-message' : 'other-message'}">
+            <div class="message-bubble ${message.user_id == {{ current_user.id }} ? 'my-message float-end' : 'other-message float-start'}">
                 <div class="message-content">
                     <div class="message-header">
                         <strong class="message-author">${message.username}</strong>
@@ -110,7 +135,7 @@
             </div>
         `;
         
-        messageContainer.appendChild(messageDiv);
+        messagesWrapper.appendChild(messageDiv);
         messageContainer.scrollTop = messageContainer.scrollHeight;
         
         if (message.id > lastMessageId) {
@@ -125,7 +150,7 @@
             const data = await response.json();
             
             if (data.status === 'success' && data.messages.length > 0) {
-                data.messages.reverse().forEach(message => {
+                data.messages.forEach(message => {
                     addMessage(message);
                 });
             }
