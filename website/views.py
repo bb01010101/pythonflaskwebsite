@@ -19,10 +19,20 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
+    """
+    Check if the uploaded file has an allowed extension
+    Returns True if the file extension is in ALLOWED_EXTENSIONS
+    """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def fix_timestamp(timestamp):
-    """Fix timestamps that might have incorrect year."""
+    """
+    Fix timestamps that might have incorrect year or timezone
+    Args:
+        timestamp: The timestamp to fix
+    Returns:
+        Corrected timestamp with proper timezone and year
+    """
     if timestamp is None:
         return datetime.datetime.now(datetime.timezone.utc)
     
@@ -30,6 +40,7 @@ def fix_timestamp(timestamp):
     if timestamp.tzinfo is None:
         timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
     
+    # Fix future dates by setting them to current year
     now = datetime.datetime.now(datetime.timezone.utc)
     if timestamp.year > now.year:
         return timestamp.replace(year=now.year)
@@ -38,6 +49,7 @@ def fix_timestamp(timestamp):
 @views.route('/', methods=['GET', 'POST'])
 @login_required
 def home():
+    """Home page route - renders the main dashboard"""
     return render_template("index.html", user=current_user)
 
 @views.route('/view_charts', methods=['GET', 'POST'])
@@ -319,17 +331,25 @@ def posts():
 @views.route('/create-post', methods=['GET', 'POST'])
 @login_required
 def create_post():
+    """
+    Handle post creation:
+    GET: Display the create post form
+    POST: Process the form submission and create a new post
+    """
     if request.method == 'POST':
+        # Get form data
         content = request.form.get('content')
         file = request.files.get('image')
         image_path = None
 
+        # Handle image upload if present
         if file and allowed_file(file.filename):
+            # Secure the filename and add timestamp to make it unique
             filename = secure_filename(file.filename)
-            # Add timestamp to filename to make it unique
             filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+            # Save the file to the upload folder
             file.save(os.path.join(UPLOAD_FOLDER, filename))
-            image_path = filename  # Store just the filename, as the template adds the static path
+            image_path = filename  # Store filename for database
 
         # Create new post with current UTC time
         new_post = Post(
@@ -338,24 +358,32 @@ def create_post():
             user_id=current_user.id,
             timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
+        # Save to database
         db.session.add(new_post)
         db.session.commit()
         flash('Post created successfully!', category='success')
         return redirect(url_for('views.posts'))
     
-    # Handle GET request - render the create post form
+    # Handle GET request - display the create post form
     return render_template('create_post.html', user=current_user)
 
 @views.route('/like-post/<int:post_id>', methods=['POST'])
 @login_required
 def like_post(post_id):
-    post = Post.query.get_or_404(post_id)
+    """
+    Handle post likes:
+    - If user hasn't liked the post, create a new like
+    - If user has already liked the post, remove the like (unlike)
+    """
+    post = Post.query.get_or_404(post_id)  # Get post or return 404 if not found
     like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
 
     if like:
+        # Unlike: Remove existing like
         db.session.delete(like)
         db.session.commit()
     else:
+        # Like: Create new like
         like = Like(user_id=current_user.id, post_id=post_id)
         db.session.add(like)
         db.session.commit()
@@ -365,17 +393,25 @@ def like_post(post_id):
 @views.route('/delete-post/<int:post_id>', methods=['POST'])
 @login_required
 def delete_post(post_id):
+    """
+    Handle post deletion:
+    - Verify the current user owns the post
+    - Delete associated image file if it exists
+    - Remove post from database
+    """
     post = Post.query.get_or_404(post_id)
+    # Check if current user is the post author
     if post.user_id != current_user.id:
         flash('You cannot delete this post!', category='error')
         return redirect(url_for('views.posts'))
 
-    # Delete associated image if it exists
+    # Delete associated image file if it exists
     if post.image_path:
         image_path = os.path.join(UPLOAD_FOLDER, post.image_path)
         if os.path.exists(image_path):
             os.remove(image_path)
 
+    # Delete post from database
     db.session.delete(post)
     db.session.commit()
     flash('Post deleted!', category='success')
