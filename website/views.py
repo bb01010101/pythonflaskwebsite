@@ -250,7 +250,10 @@ def delete_entry(entry_id):
 @views.route('/message_board')
 @login_required
 def message_board():
-    messages = Message.query.order_by(Message.timestamp.asc()).all()
+    """
+    Display the message board with all messages
+    """
+    messages = Message.query.order_by(Message.timestamp.desc()).limit(50).all()
     
     # Convert messages to JSON-serializable format with proper timestamp handling
     serialized_messages = []
@@ -281,41 +284,92 @@ def message_board():
             'content': message.content,
             'user_id': message.user_id,
             'username': message.author.username,
-            'timestamp_ms': int(message.timestamp.timestamp() * 1000),  # Convert to milliseconds
+            'timestamp_ms': int(message.timestamp.timestamp() * 1000),
             'formatted_time': formatted_time
         })
     
     return render_template('message_board.html', messages=serialized_messages, user=current_user)
 
-@socketio.on('new_message')
-def handle_message(data):
-    if not current_user.is_authenticated:
-        return
-    
+@views.route('/send_message', methods=['POST'])
+@login_required
+def send_message():
+    """
+    Handle new message submission via regular HTTP POST
+    """
     try:
+        content = request.form.get('content')
+        if not content:
+            return jsonify({'status': 'error', 'message': 'Message cannot be empty'}), 400
+
         # Create message with current UTC time
         message = Message(
-            content=data['content'],
+            content=content,
             user_id=current_user.id,
             timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
         db.session.add(message)
         db.session.commit()
         
-        # Format relative time for new message
-        formatted_time = "just now"
-        
-        response_data = {
-            'user_id': current_user.id,
-            'username': current_user.username,
-            'content': message.content,
-            'timestamp_ms': int(message.timestamp.timestamp() * 1000),  # Convert to milliseconds
-            'formatted_time': formatted_time
-        }
-        emit('message', response_data, broadcast=True)
+        return jsonify({
+            'status': 'success',
+            'message': {
+                'id': message.id,
+                'content': message.content,
+                'user_id': message.user_id,
+                'username': current_user.username,
+                'timestamp_ms': int(message.timestamp.timestamp() * 1000),
+                'formatted_time': 'just now'
+            }
+        })
     except Exception as e:
-        print(f"Error handling message: {e}")
+        print(f"Error sending message: {e}")
         db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@views.route('/get_messages')
+@login_required
+def get_messages():
+    """
+    Endpoint to fetch new messages via polling
+    """
+    try:
+        last_message_id = request.args.get('last_id', type=int, default=0)
+        messages = Message.query.filter(Message.id > last_message_id)\
+                              .order_by(Message.timestamp.desc())\
+                              .limit(50).all()
+        
+        serialized_messages = []
+        for message in messages:
+            message.timestamp = fix_timestamp(message.timestamp)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            diff = now - message.timestamp
+            
+            if diff.days > 365:
+                formatted_time = f"{diff.days // 365}y ago"
+            elif diff.days > 30:
+                formatted_time = f"{diff.days // 30}mo ago"
+            elif diff.days > 0:
+                formatted_time = f"{diff.days}d ago"
+            elif diff.seconds >= 3600:
+                formatted_time = f"{diff.seconds // 3600}h ago"
+            elif diff.seconds >= 60:
+                formatted_time = f"{diff.seconds // 60}m ago"
+            else:
+                formatted_time = "just now"
+            
+            serialized_messages.append({
+                'id': message.id,
+                'content': message.content,
+                'user_id': message.user_id,
+                'username': message.author.username,
+                'timestamp_ms': int(message.timestamp.timestamp() * 1000),
+                'formatted_time': formatted_time
+            })
+        
+        return jsonify({'status': 'success', 'messages': serialized_messages})
+    except Exception as e:
+        print(f"Error fetching messages: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @views.route('/posts', methods=['GET'])
 @login_required

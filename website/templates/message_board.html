@@ -40,199 +40,130 @@
 
 <style>
     .message {
-        display: flex;
-        flex-direction: column;
         margin-bottom: 1rem;
     }
     
-    .message-right {
-        align-items: flex-end;
+    .message-left {
+        text-align: left;
     }
     
-    .message-left {
-        align-items: flex-start;
+    .message-right {
+        text-align: right;
     }
     
     .message-bubble {
-        padding: 0.75rem;
-        border-radius: 1.25rem;
+        display: inline-block;
         max-width: 80%;
-        word-break: break-word;
-        position: relative;
+        padding: 0.5rem 1rem;
+        border-radius: 1rem;
     }
     
     .my-message {
         background-color: #FF9F45;
         color: white;
-        border-bottom-right-radius: 0.5rem;
-        margin-left: auto;
     }
     
     .other-message {
-        background-color: #f8f9fa;
-        border-bottom-left-radius: 0.5rem;
-        margin-right: auto;
+        background-color: #f0f0f0;
+        color: #333;
     }
     
-    .message-info {
-        display: flex;
-        align-items: baseline;
-        gap: 0.5rem;
+    .message-header {
         margin-bottom: 0.25rem;
-        font-size: 0.9rem;
+        font-size: 0.875rem;
     }
     
-    .message-author {
-        font-weight: 600;
+    .message-time {
+        color: rgba(255, 255, 255, 0.8);
     }
     
-    .message-content {
-        margin-top: 0.25rem;
+    .other-message .message-time {
+        color: #666;
     }
     
-    #message-container {
-        scrollbar-width: thin;
-        scrollbar-color: #6c757d #f8f9fa;
-        padding: 1rem;
-    }
-    
-    #message-container::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    #message-container::-webkit-scrollbar-track {
-        background: #f8f9fa;
-    }
-    
-    #message-container::-webkit-scrollbar-thumb {
-        background-color: #6c757d;
-        border-radius: 3px;
-    }
-    
-    .card-header h2 {
-        font-size: 1.5rem;
+    .message-text {
         margin: 0;
-    }
-
-    .input-group .btn {
-        padding-left: 1.5rem;
-        padding-right: 1.5rem;
-    }
-
-    .input-group .form-control {
-        border-radius: 1.5rem 0 0 1.5rem;
-    }
-
-    .input-group .btn {
-        border-radius: 0 1.5rem 1.5rem 0;
+        word-break: break-word;
     }
 </style>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
-    const socket = io();
+    let lastMessageId = {{ messages[0].id if messages else 0 }};
     const messageContainer = document.getElementById('message-container');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
 
-    // Function to format the date in a user-friendly way
-    function formatDate(timestampMs, originalDate) {
-        const date = new Date(parseInt(timestampMs));
-        const now = new Date();
-        
-        // Check if the date is valid
-        if (isNaN(date.getTime())) {
-            return originalDate;
-        }
-
-        // Calculate time difference
-        const diff = now.getTime() - date.getTime();
-        
-        // If the difference is negative or too large, use original date
-        if (diff < 0 || diff > 7 * 24 * 60 * 60 * 1000) {
-            return originalDate;
-        }
-        
-        const seconds = Math.floor(diff / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-
-        if (seconds < 30) {
-            return 'just now';
-        } else if (seconds < 60) {
-            return `${seconds}s ago`;
-        } else if (minutes < 60) {
-            return `${minutes}m ago`;
-        } else if (hours < 24) {
-            return `${hours}h ago`;
-        } else {
-            return `${days}d ago`;
-        }
-    }
-
-    function updateTimestamps() {
-        const timestamps = document.querySelectorAll('.timestamp');
-        timestamps.forEach(function(element) {
-            const timestamp = element.dataset.timestamp;
-            const originalDate = element.dataset.original;
-            element.textContent = formatDate(timestamp, originalDate);
-        });
-    }
-
-    function appendMessage(data) {
+    // Function to add a new message to the container
+    function addMessage(message) {
         const messageDiv = document.createElement('div');
-        const isCurrentUser = data.user_id === {{ current_user.id }};
-        messageDiv.className = `message mb-3 ${isCurrentUser ? 'message-right' : 'message-left'}`;
+        messageDiv.className = `message mb-3 ${message.user_id == {{ current_user.id }} ? 'message-right' : 'message-left'}`;
         
-        const timestamp = Date.now();
-        const formattedDate = new Date().toLocaleString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-            hour12: true
-        });
-
         messageDiv.innerHTML = `
-            <div class="message-bubble ${isCurrentUser ? 'my-message' : 'other-message'}">
-                <div class="message-info">
-                    <strong class="message-author">${data.username}</strong>
-                    <small class="timestamp ${isCurrentUser ? 'text-white-50' : 'text-muted'}" 
-                           data-timestamp="${timestamp}" 
-                           data-original="${formattedDate}">
-                        just now
-                    </small>
+            <div class="message-bubble ${message.user_id == {{ current_user.id }} ? 'my-message' : 'other-message'}">
+                <div class="message-content">
+                    <div class="message-header">
+                        <strong class="message-author">${message.username}</strong>
+                        <small class="message-time">${message.formatted_time}</small>
+                    </div>
+                    <p class="message-text">${message.content}</p>
                 </div>
-                <div class="message-content">${data.content}</div>
             </div>
         `;
         
         messageContainer.appendChild(messageDiv);
         messageContainer.scrollTop = messageContainer.scrollHeight;
+        
+        if (message.id > lastMessageId) {
+            lastMessageId = message.id;
+        }
     }
 
-    messageForm.addEventListener('submit', function(e) {
+    // Function to fetch new messages
+    async function fetchNewMessages() {
+        try {
+            const response = await fetch(`/get_messages?last_id=${lastMessageId}`);
+            const data = await response.json();
+            
+            if (data.status === 'success' && data.messages.length > 0) {
+                data.messages.reverse().forEach(message => {
+                    addMessage(message);
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching messages:', error);
+        }
+    }
+
+    // Handle form submission
+    messageForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
         const content = messageInput.value.trim();
-        if (content) {
-            socket.emit('new_message', { content: content });
-            messageInput.value = '';
+        if (!content) return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('content', content);
+            
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                messageInput.value = '';
+                addMessage(data.message);
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
         }
     });
 
-    socket.on('message', function(data) {
-        appendMessage(data);
-    });
+    // Start polling for new messages
+    setInterval(fetchNewMessages, 3000);  // Poll every 3 seconds
 
-    // Update timestamps every 30 seconds
-    setInterval(updateTimestamps, 30000);
-
-    // Initial timestamp update
-    document.addEventListener('DOMContentLoaded', updateTimestamps);
-
-    // Auto-scroll to bottom on load
+    // Scroll to bottom on load
     messageContainer.scrollTop = messageContainer.scrollHeight;
 </script>
 {% endblock %} 
