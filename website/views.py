@@ -474,7 +474,10 @@ def delete_post(post_id):
     if post.image_path:
         image_path = os.path.join(UPLOAD_FOLDER, post.image_path)
         if os.path.exists(image_path):
-            os.remove(image_path)
+            try:
+                os.remove(image_path)
+            except Exception as e:
+                print(f"Error deleting image file: {e}")
 
     # Delete post from database
     db.session.delete(post)
@@ -518,4 +521,26 @@ def delete_comment(comment_id):
     db.session.commit()
     flash('Comment deleted!', category='success')
     return redirect(url_for('views.posts'))
+
+@views.route('/delete-message/<int:message_id>', methods=['POST'])
+@login_required
+def delete_message(message_id):
+    """
+    Handle message deletion:
+    - Allow admin user 'bri' to delete any message
+    - Allow regular users to delete only their own messages
+    """
+    message = Message.query.get_or_404(message_id)
+    if message.user_id != current_user.id and current_user.username != 'bri':
+        flash('You cannot delete this message!', category='error')
+        return redirect(url_for('views.message_board'))
+
+    db.session.delete(message)
+    db.session.commit()
+    
+    if current_user.username == 'bri' and message.user_id != current_user.id:
+        flash('Message deleted by admin!', category='success')
+    else:
+        flash('Message deleted!', category='success')
+    return redirect(url_for('views.message_board'))
 
