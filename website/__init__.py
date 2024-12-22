@@ -4,28 +4,23 @@ from os import path
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
-import sqlite3
 import datetime
 import os
 
 db = SQLAlchemy()
-DB_NAME = "database.db"
 socketio = SocketIO()
-
-@event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    if isinstance(dbapi_connection, sqlite3.Connection):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
 
 def create_app():
     app = Flask(__name__)
     app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False') == 'True'
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
+    
+    # PostgreSQL Database URL configuration
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or 'postgresql://postgres:postgres@localhost:5432/healthtracker'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     db.init_app(app)
@@ -40,10 +35,8 @@ def create_app():
 
     from .models import User, Entry, Message
 
-    # Only create tables if using SQLite
-    if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
-        with app.app_context():
-            db.create_all()
+    with app.app_context():
+        db.create_all()
 
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
@@ -82,9 +75,4 @@ def create_app():
     app.jinja_env.filters['timeago'] = timeago
     
     return app
-
-def create_database(app):
-    if not path.exists('website/' + DB_NAME):
-        db.create_all(app=app)
-        print('Created Database!')
 

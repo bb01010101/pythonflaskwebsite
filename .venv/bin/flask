@@ -1,4 +1,4 @@
-#!/Users/brianboler/pythontest/pythonflaskwebsite/.venv/bin/python
+#!/Users/brianboler/pythontest/pythonflaskwebsite/.venv/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys
