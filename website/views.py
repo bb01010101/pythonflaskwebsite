@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 views = Blueprint('views', __name__)
 
 # Configure upload folder - use absolute path
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+UPLOAD_FOLDER = '/opt/render/project/src/website/static/uploads' if os.getenv('RENDER') else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 # Create upload folder if it doesn't exist
@@ -398,12 +398,22 @@ def create_post():
 
         # Handle image upload if present
         if file and allowed_file(file.filename):
-            # Secure the filename and add timestamp to make it unique
-            filename = secure_filename(file.filename)
-            filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-            # Save the file to the upload folder
-            file.save(os.path.join(UPLOAD_FOLDER, filename))
-            image_path = filename  # Store filename for database
+            try:
+                # Secure the filename and add timestamp to make it unique
+                filename = secure_filename(file.filename)
+                filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                # Save the file to the upload folder
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(file_path)
+                
+                # Set permissions for the uploaded file
+                os.chmod(file_path, 0o644)
+                
+                image_path = filename  # Store filename for database
+            except Exception as e:
+                print(f"Error saving image: {e}")
+                flash('Error uploading image. Please try again.', category='error')
+                return redirect(url_for('views.create_post'))
 
         # Create new post with current UTC time
         new_post = Post(
