@@ -60,9 +60,9 @@ class StravaIntegration:
     def sync_activities(self, user):
         try:
             self.client.access_token = user.strava_access_token
-            two_weeks_ago = datetime.now() - timedelta(days=14)
+            one_month_ago = datetime.now() - timedelta(days=30)
             
-            activities = self.client.get_activities(after=two_weeks_ago)
+            activities = self.client.get_activities(after=one_month_ago)
             
             # Create a dictionary to accumulate daily mileage
             daily_mileage = {}

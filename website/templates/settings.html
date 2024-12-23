@@ -22,7 +22,7 @@
                 </div>
             {% elif not strava_connected %}
                 <p>Connect your Strava account to automatically sync your activities.</p>
-                <a href="{{ url_for('views.strava_auth') }}" class="btn btn-warning">
+                <a href="{{ url_for('views.strava_auth') }}" class="btn" style="background-color: #FC4C02; color: white;">
                     <i class="fab fa-strava"></i> Connect to Strava
                 </a>
             {% else %}
