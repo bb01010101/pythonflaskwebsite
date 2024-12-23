@@ -876,32 +876,38 @@ def leaderboard():
     leaderboard_data = []
     
     if metric == 'running_mileage':
-        # Get all users
-        users = User.query.all()
+        # Get manual entries
+        manual_entries = db.session.query(
+            User.id.label('user_id'),
+            User.username,
+            db.func.coalesce(db.func.sum(Entry.running_mileage), 0).label('manual_miles')
+        ).join(Entry, User.id == Entry.user_id)\
+         .filter(Entry.date >= start_date)\
+         .group_by(User.id, User.username).all()
         
-        for user in users:
-            # Get manual entries
-            manual_entries = Entry.query.filter(
-                Entry.user_id == user.id,
-                Entry.date >= start_date,
-                Entry.date <= today
-            ).with_entities(db.func.sum(Entry.running_mileage)).scalar() or 0
-            
-            # Get Strava activities
-            strava_miles = Activity.query.filter(
-                Activity.user_id == user.id,
-                db.func.date(Activity.date) >= start_date,
-                db.func.date(Activity.date) <= today
-            ).with_entities(db.func.sum(Activity.distance * 0.000621371)).scalar() or 0
-            
-            total_miles = manual_entries + strava_miles
-            
-            logger.info(f"User {user.username} - Manual: {manual_entries}, Strava: {strava_miles}, Total: {total_miles}")
-            
+        # Get Strava activities
+        strava_entries = db.session.query(
+            User.id.label('user_id'),
+            User.username,
+            db.func.coalesce(db.func.sum(Activity.distance * 0.000621371), 0).label('strava_miles')
+        ).join(Activity, User.id == Activity.user_id)\
+         .filter(db.func.date(Activity.date) >= start_date)\
+         .group_by(User.id, User.username).all()
+        
+        # Create dictionaries for easy lookup
+        manual_dict = {(e.user_id, e.username): e.manual_miles for e in manual_entries}
+        strava_dict = {(e.user_id, e.username): e.strava_miles for e in strava_entries}
+        
+        # Combine all unique users
+        all_users = set(manual_dict.keys()) | set(strava_dict.keys())
+        
+        for user_id, username in all_users:
+            total_miles = manual_dict.get((user_id, username), 0) + strava_dict.get((user_id, username), 0)
             if total_miles > 0:
+                logger.info(f"User {username} - Total miles: {total_miles}")
                 leaderboard_data.append({
-                    'user_id': user.id,
-                    'username': user.username,
+                    'user_id': user_id,
+                    'username': username,
                     'score': round(float(total_miles), 2),
                     'unit': 'miles'
                 })
@@ -912,21 +918,21 @@ def leaderboard():
             User.id,
             User.username,
             db.func.sum(getattr(Entry, metric)).label('total')
-        ).join(Entry).filter(
-            Entry.date >= start_date,
-            Entry.date <= today
-        ).group_by(User.id, User.username).all()
+        ).join(Entry)\
+         .filter(Entry.date >= start_date)\
+         .group_by(User.id, User.username)\
+         .having(db.func.sum(getattr(Entry, metric)) > 0)\
+         .all()
         
         for entry in entries:
-            if entry.total and entry.total > 0:
-                logger.info(f"User {entry.username} - {metric}: {entry.total}")
-                leaderboard_data.append({
-                    'user_id': entry.id,
-                    'username': entry.username,
-                    'score': round(float(entry.total), 2),
-                    'unit': 'hours' if metric in ['sleep_hours', 'screen_time'] else 
-                           'oz' if metric == 'water_intake' else ''
-                })
+            logger.info(f"User {entry.username} - {metric}: {entry.total}")
+            leaderboard_data.append({
+                'user_id': entry.id,
+                'username': entry.username,
+                'score': round(float(entry.total), 2),
+                'unit': 'hours' if metric in ['sleep_hours', 'screen_time'] else 
+                       'oz' if metric == 'water_intake' else ''
+            })
     
     # Sort by score descending
     leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
