@@ -852,3 +852,109 @@ def test_strava_data():
     }
     return jsonify(data)
 
+@views.route('/leaderboard')
+@login_required
+def leaderboard():
+    # Get current date and time
+    now = datetime.datetime.now()
+    today = now.date()
+    
+    # Calculate start dates for different periods
+    week_start = today - datetime.timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+    year_start = today.replace(month=1, day=1)
+
+    # Get all users
+    users = User.query.all()
+    leaderboard_data = []
+
+    for user in users:
+        # Get user's entries for different time periods
+        daily_entry = Entry.query.filter_by(
+            user_id=user.id,
+            date=today
+        ).first()
+
+        weekly_entries = Entry.query.filter(
+            Entry.user_id == user.id,
+            Entry.date >= week_start,
+            Entry.date <= today
+        ).all()
+
+        monthly_entries = Entry.query.filter(
+            Entry.user_id == user.id,
+            Entry.date >= month_start,
+            Entry.date <= today
+        ).all()
+
+        yearly_entries = Entry.query.filter(
+            Entry.user_id == user.id,
+            Entry.date >= year_start,
+            Entry.date <= today
+        ).all()
+
+        # Calculate totals for each period and metric
+        daily_data = {
+            'miles': daily_entry.running_mileage if daily_entry else 0,
+            'sleep': daily_entry.sleep_hours if daily_entry else 0,
+            'calories': daily_entry.calories if daily_entry else 0,
+            'water': daily_entry.water_intake if daily_entry else 0,
+            'screen': daily_entry.screen_time if daily_entry else 0
+        }
+
+        weekly_data = {
+            'miles': sum(entry.running_mileage for entry in weekly_entries),
+            'sleep': sum(entry.sleep_hours for entry in weekly_entries),
+            'calories': sum(entry.calories for entry in weekly_entries),
+            'water': sum(entry.water_intake for entry in weekly_entries),
+            'screen': sum(entry.screen_time for entry in weekly_entries)
+        }
+
+        monthly_data = {
+            'miles': sum(entry.running_mileage for entry in monthly_entries),
+            'sleep': sum(entry.sleep_hours for entry in monthly_entries),
+            'calories': sum(entry.calories for entry in monthly_entries),
+            'water': sum(entry.water_intake for entry in monthly_entries),
+            'screen': sum(entry.screen_time for entry in monthly_entries)
+        }
+
+        yearly_data = {
+            'miles': sum(entry.running_mileage for entry in yearly_entries),
+            'sleep': sum(entry.sleep_hours for entry in yearly_entries),
+            'calories': sum(entry.calories for entry in yearly_entries),
+            'water': sum(entry.water_intake for entry in yearly_entries),
+            'screen': sum(entry.screen_time for entry in yearly_entries)
+        }
+
+        leaderboard_data.append({
+            'username': user.username,
+            'daily': {k: round(v, 2) for k, v in daily_data.items()},
+            'weekly': {k: round(v, 2) for k, v in weekly_data.items()},
+            'monthly': {k: round(v, 2) for k, v in monthly_data.items()},
+            'yearly': {k: round(v, 2) for k, v in yearly_data.items()}
+        })
+
+    # Create sorted leaderboards for each metric and period
+    metrics = ['miles', 'sleep', 'calories', 'water', 'screen']
+    periods = ['daily', 'weekly', 'monthly', 'yearly']
+    
+    sorted_leaderboards = {
+        period: {
+            metric: sorted(
+                leaderboard_data,
+                key=lambda x: x[period][metric],
+                reverse=True
+            )
+            for metric in metrics
+        }
+        for period in periods
+    }
+
+    return render_template(
+        'leaderboard.html',
+        user=current_user,
+        leaderboards=sorted_leaderboards,
+        metrics=metrics,
+        periods=periods
+    )
+
