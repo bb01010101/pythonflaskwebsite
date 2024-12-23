@@ -107,13 +107,13 @@ def leaderboard():
 
         print(f"Date range: {start_date} to {end_date}")  # Debug log
         
-        # Define metric mappings
-        metric_columns = {
-            'running_mileage': Entry.running_mileage,
-            'calories': Entry.calories,
-            'water': Entry.water_intake,
-            'sleep': Entry.sleep_hours,
-            'screen_time': Entry.screen_time
+        # Map metric names to their database column names
+        metric_mapping = {
+            'running_mileage': 'running_mileage',
+            'calories': 'calories',
+            'water': 'water_intake',
+            'sleep': 'sleep_hours',
+            'screen_time': 'screen_time'
         }
         
         metric_units = {
@@ -124,43 +124,44 @@ def leaderboard():
             'screen_time': 'hours'
         }
 
-        # First, get all users
-        users = User.query.all()
-        print(f"Found {len(users)} users")  # Debug log
+        # Get the actual database column name
+        db_column = metric_mapping[metric]
 
-        # Then, for each user, get their metric sum for the time period
-        leaderboard_data = []
-        for user in users:
-            entries = Entry.query.filter(
-                Entry.user_id == user.id,
-                Entry.date >= start_date,
-                Entry.date <= end_date
-            ).all()
-            
-            # Calculate total score for the metric
-            total_score = 0
-            for entry in entries:
-                value = getattr(entry, metric)
-                if value is not None:
-                    total_score += value
-            
-            leaderboard_data.append({
-                'user_id': user.id,
-                'username': user.username,
-                'score': round(total_score, 2),
-                'unit': metric_units[metric]
-            })
+        # Query to get aggregated data for the leaderboard
+        query = db.session.query(
+            User.id.label('user_id'),
+            User.username.label('username'),
+            func.coalesce(func.sum(getattr(Entry, db_column)), 0).label('score')
+        ).join(
+            Entry, User.id == Entry.user_id, isouter=True
+        ).filter(
+            (Entry.date >= start_date) | (Entry.date.is_(None)),
+            (Entry.date <= end_date) | (Entry.date.is_(None))
+        ).group_by(User.id, User.username)
 
-        print(f"Processed {len(leaderboard_data)} entries for leaderboard")  # Debug log
-
-        # Sort the leaderboard
+        # Sort based on metric type
         if metric == 'screen_time':
-            leaderboard_data.sort(key=lambda x: x['score'])
+            query = query.order_by(func.sum(getattr(Entry, db_column)).asc())
         else:
-            leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
+            query = query.order_by(func.sum(getattr(Entry, db_column)).desc())
+
+        leaderboard_data = query.all()
+        print(f"Query returned {len(leaderboard_data)} results")  # Debug log
+
+        # Format the data for template
+        leaderboard = [{
+            'user_id': entry.user_id,
+            'username': entry.username,
+            'score': round(entry.score if entry.score else 0, 2),
+            'unit': metric_units[metric]
+        } for entry in leaderboard_data]
+
+        # Debug print some entries
+        for entry in leaderboard[:5]:  # Print first 5 entries
+            print(f"User: {entry['username']}, Score: {entry['score']} {entry['unit']}")
 
         return render_template('leaderboard.html',
-                             leaderboard=leaderboard_data,
+                             leaderboard=leaderboard,
                              current_user=current_user,
                              user=current_user,
                              selected_timeframe=timeframe_display,
