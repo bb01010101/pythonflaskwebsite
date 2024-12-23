@@ -2,157 +2,87 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Leaderboard</h2>
-    
-    {% for period in periods %}
-    <h3 class="mt-4 mb-3">{{ period.title() }} Stats</h3>
-    <div class="row">
-        <!-- Running -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Running Miles</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>User</th>
-                                    <th>Miles</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for leader in leaderboards[period]['miles'] %}
-                                <tr {% if leader.username == current_user.username %}class="table-primary"{% endif %}>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ leader.username }}</td>
-                                    <td>{{ leader[period]['miles'] }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header theme-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">
+                            <i class="fas fa-trophy me-2"></i>Health Statistics Leaderboard
+                        </h2>
+                        <span class="theme-subtitle">{{ selected_timeframe }}</span>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Sleep -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Sleep Hours</h5>
-                </div>
                 <div class="card-body">
+                    <!-- Filters -->
+                    <form method="GET" class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-12 col-sm-6 col-lg-5">
+                                <select name="metric" class="form-select theme-select" id="metric-select">
+                                    <optgroup label="Default Metrics">
+                                        <option value="running_mileage" {% if selected_metric == 'running_mileage' %}selected{% endif %}>Running Mileage</option>
+                                        <option value="calories" {% if selected_metric == 'calories' %}selected{% endif %}>Calories</option>
+                                        <option value="water" {% if selected_metric == 'water' %}selected{% endif %}>Water Intake</option>
+                                        <option value="sleep" {% if selected_metric == 'sleep' %}selected{% endif %}>Sleep Hours</option>
+                                        <option value="screen_time" {% if selected_metric == 'screen_time' %}selected{% endif %}>Screen Time</option>
+                                    </optgroup>
+                                    {% if custom_metrics %}
+                                    <optgroup label="Custom Metrics">
+                                        {% for metric in custom_metrics %}
+                                        <option value="custom_{{ metric.id }}" {% if selected_metric == 'custom_' ~ metric.id %}selected{% endif %}>
+                                            {{ metric.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-5">
+                                <select name="timeframe" class="form-select theme-select" id="timeframe-select">
+                                    <option value="day" {% if request.args.get('timeframe') == 'day' %}selected{% endif %}>Today</option>
+                                    <option value="week" {% if request.args.get('timeframe') == 'week' %}selected{% endif %}>This Week</option>
+                                    <option value="month" {% if request.args.get('timeframe') == 'month' %}selected{% endif %}>This Month</option>
+                                    <option value="year" {% if request.args.get('timeframe') == 'year' %}selected{% endif %}>This Year</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-12 col-lg-2">
+                                <button type="submit" class="btn theme-btn w-100">Update</button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Leaderboard Table -->
                     <div class="table-responsive">
-                        <table class="table">
-                            <thead>
+                        <table class="table table-hover align-middle">
+                            <thead class="theme-table-header">
                                 <tr>
-                                    <th>Rank</th>
+                                    <th class="text-center" style="width: 80px">Rank</th>
                                     <th>User</th>
-                                    <th>Hours</th>
+                                    <th class="text-end">Score</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for leader in leaderboards[period]['sleep'] %}
-                                <tr {% if leader.username == current_user.username %}class="table-primary"{% endif %}>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ leader.username }}</td>
-                                    <td>{{ leader[period]['sleep'] }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Calories -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Calories</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>User</th>
-                                    <th>Calories</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for leader in leaderboards[period]['calories'] %}
-                                <tr {% if leader.username == current_user.username %}class="table-primary"{% endif %}>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ leader.username }}</td>
-                                    <td>{{ leader[period]['calories'] }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Water -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Water Intake (oz)</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>User</th>
-                                    <th>Ounces</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for leader in leaderboards[period]['water'] %}
-                                <tr {% if leader.username == current_user.username %}class="table-primary"{% endif %}>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ leader.username }}</td>
-                                    <td>{{ leader[period]['water'] }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Screen Time -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Screen Time (hrs)</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>User</th>
-                                    <th>Hours</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for leader in leaderboards[period]['screen'] %}
-                                <tr {% if leader.username == current_user.username %}class="table-primary"{% endif %}>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ leader.username }}</td>
-                                    <td>{{ leader[period]['screen'] }}</td>
+                                {% for entry in leaderboard %}
+                                <tr class="{% if entry.user_id == current_user.id %}highlight-row{% endif %}">
+                                    <td class="text-center">
+                                        {% if loop.index == 1 %}
+                                            <i class="fas fa-trophy text-gold"></i>
+                                        {% elif loop.index == 2 %}
+                                            <i class="fas fa-trophy text-silver"></i>
+                                        {% elif loop.index == 3 %}
+                                            <i class="fas fa-trophy text-bronze"></i>
+                                        {% else %}
+                                            {{ loop.index }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if entry.user_id == current_user.id %}
+                                            <strong>{{ entry.username }} (You)</strong>
+                                        {% else %}
+                                            {{ entry.username }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ entry.score }} {{ entry.unit }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -162,6 +92,147 @@
             </div>
         </div>
     </div>
-    {% endfor %}
 </div>
+
+<style>
+    .theme-header {
+        background-color: #FFD700;
+        color: #2C3E50;
+        padding: 1rem;
+        border: none;
+    }
+
+    .theme-subtitle {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #2C3E50;
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+    }
+
+    .theme-select {
+        border: 2px solid #FFD700;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        color: #2C3E50;
+        transition: all 0.2s ease;
+    }
+
+    .theme-select:focus {
+        border-color: #FFC107;
+        box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+    }
+
+    .theme-btn {
+        background-color: #FFD700;
+        color: #2C3E50;
+        border: none;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .theme-btn:hover {
+        background-color: #FFC107;
+        color: #2C3E50;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .theme-table-header {
+        background-color: #FFF8DC;
+    }
+
+    .theme-table-header th {
+        font-weight: 600;
+        color: #2C3E50;
+        border-top: none;
+    }
+
+    .card {
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table th, .table td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: rgba(255, 215, 0, 0.05);
+    }
+
+    .highlight-row {
+        background-color: rgba(255, 215, 0, 0.1);
+    }
+
+    .highlight-row:hover {
+        background-color: rgba(255, 215, 0, 0.15) !important;
+    }
+
+    .text-gold {
+        color: #FFD700;
+    }
+
+    .text-silver {
+        color: #C0C0C0;
+    }
+
+    .text-bronze {
+        color: #CD7F32;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 991px) {
+        .row.g-3 > div {
+            margin-bottom: 0.5rem;
+        }
+        
+        .theme-btn {
+            margin-top: 0.5rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .theme-subtitle {
+            display: none;
+        }
+        
+        .table th, .table td {
+            padding: 0.75rem;
+        }
+
+        .row.g-3 {
+            margin: 0;
+        }
+
+        .col-12 {
+            padding: 0.5rem;
+        }
+
+        .theme-select {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .card-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .table {
+            font-size: 0.9rem;
+        }
+    }
+</style>
 {% endblock %} 
