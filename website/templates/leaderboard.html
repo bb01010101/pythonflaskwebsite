@@ -19,11 +19,22 @@
                         <div class="row g-3">
                             <div class="col-12 col-sm-6 col-lg-5">
                                 <select name="metric" class="form-select theme-select" id="metric-select">
-                                    <option value="running_mileage" {% if selected_metric == 'running_mileage' %}selected{% endif %}>Running Mileage</option>
-                                    <option value="calories" {% if selected_metric == 'calories' %}selected{% endif %}>Calories</option>
-                                    <option value="water" {% if selected_metric == 'water' %}selected{% endif %}>Water Intake</option>
-                                    <option value="sleep" {% if selected_metric == 'sleep' %}selected{% endif %}>Sleep Hours</option>
-                                    <option value="screen_time" {% if selected_metric == 'screen_time' %}selected{% endif %}>Screen Time</option>
+                                    <optgroup label="Default Metrics">
+                                        <option value="running_mileage" {% if selected_metric == 'running_mileage' %}selected{% endif %}>Running Mileage</option>
+                                        <option value="calories" {% if selected_metric == 'calories' %}selected{% endif %}>Calories</option>
+                                        <option value="water" {% if selected_metric == 'water' %}selected{% endif %}>Water Intake</option>
+                                        <option value="sleep" {% if selected_metric == 'sleep' %}selected{% endif %}>Sleep Hours</option>
+                                        <option value="screen_time" {% if selected_metric == 'screen_time' %}selected{% endif %}>Screen Time</option>
+                                    </optgroup>
+                                    {% if custom_metrics %}
+                                    <optgroup label="Custom Metrics">
+                                        {% for metric in custom_metrics %}
+                                        <option value="custom_{{ metric.id }}" {% if selected_metric == 'custom_' ~ metric.id %}selected{% endif %}>
+                                            {{ metric.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endif %}
                                 </select>
                             </div>
                             <div class="col-12 col-sm-6 col-lg-5">

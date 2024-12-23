@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
-from .models import User, Entry, Message, Post, Like, Comment
+from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry
 from . import db, socketio
 import json
 import datetime
@@ -543,4 +543,160 @@ def delete_message(message_id):
     else:
         flash('Message deleted!', category='success')
     return redirect(url_for('views.message_board'))
+
+@views.route('/metric-settings', methods=['GET'])
+@login_required
+def metric_settings():
+    """Display metric settings page with default and custom metrics"""
+    # Default metrics with descriptions
+    default_metrics = [
+        {
+            'name': 'sleep_hours',
+            'display_name': 'Sleep Hours',
+            'description': 'Track your daily sleep duration',
+            'is_active': any(p.metric_type == 'default' and p.metric_id == 1 for p in current_user.metric_preferences)
+        },
+        {
+            'name': 'calories',
+            'display_name': 'Calories',
+            'description': 'Monitor your daily caloric intake',
+            'is_active': any(p.metric_type == 'default' and p.metric_id == 2 for p in current_user.metric_preferences)
+        },
+        {
+            'name': 'water_intake',
+            'display_name': 'Water Intake',
+            'description': 'Track your daily water consumption',
+            'is_active': any(p.metric_type == 'default' and p.metric_id == 3 for p in current_user.metric_preferences)
+        },
+        {
+            'name': 'running_mileage',
+            'display_name': 'Running Mileage',
+            'description': 'Record your daily running distance',
+            'is_active': any(p.metric_type == 'default' and p.metric_id == 4 for p in current_user.metric_preferences)
+        },
+        {
+            'name': 'screen_time',
+            'display_name': 'Screen Time',
+            'description': 'Monitor your daily screen time',
+            'is_active': any(p.metric_type == 'default' and p.metric_id == 5 for p in current_user.metric_preferences)
+        }
+    ]
+    
+    # Get approved custom metrics
+    custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
+    for metric in custom_metrics:
+        metric.is_active = any(p.metric_type == 'custom' and p.metric_id == metric.id 
+                             for p in current_user.metric_preferences)
+    
+    return render_template('metric_settings.html', 
+                         user=current_user,
+                         default_metrics=default_metrics,
+                         custom_metrics=custom_metrics)
+
+@views.route('/save-metric-preferences', methods=['POST'])
+@login_required
+def save_metric_preferences():
+    """Save user's metric preferences"""
+    try:
+        # Clear existing preferences
+        MetricPreference.query.filter_by(user_id=current_user.id).delete()
+        
+        # Save default metric preferences
+        default_metrics = request.form.getlist('default_metrics')
+        for i, metric_name in enumerate(default_metrics):
+            pref = MetricPreference(
+                user_id=current_user.id,
+                metric_type='default',
+                metric_id=i + 1,  # Corresponds to the order in default_metrics list
+                priority=i
+            )
+            db.session.add(pref)
+        
+        # Save custom metric preferences
+        custom_metrics = request.form.getlist('custom_metrics')
+        for i, metric_id in enumerate(custom_metrics):
+            pref = MetricPreference(
+                user_id=current_user.id,
+                metric_type='custom',
+                metric_id=int(metric_id),
+                priority=len(default_metrics) + i
+            )
+            db.session.add(pref)
+        
+        db.session.commit()
+        flash('Metric preferences saved successfully!', category='success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error saving preferences: {e}")
+        flash('Error saving preferences. Please try again.', category='error')
+    
+    return redirect(url_for('views.metric_settings'))
+
+@views.route('/create-custom-metric', methods=['POST'])
+@login_required
+def create_custom_metric():
+    """Create a new custom metric"""
+    try:
+        name = request.form.get('name')
+        description = request.form.get('description')
+        unit = request.form.get('unit')
+        is_higher_better = 'is_higher_better' in request.form
+        
+        # Check if a similar metric already exists
+        existing_metric = CustomMetric.query.filter(
+            db.func.lower(CustomMetric.name) == db.func.lower(name)
+        ).first()
+        
+        if existing_metric:
+            flash('A metric with this name already exists.', category='error')
+            return redirect(url_for('views.metric_settings'))
+        
+        # Create new custom metric
+        metric = CustomMetric(
+            name=name,
+            description=description,
+            unit=unit,
+            creator_id=current_user.id,
+            is_higher_better=is_higher_better,
+            is_approved=current_user.username == 'bri'  # Auto-approve if creator is admin
+        )
+        
+        db.session.add(metric)
+        db.session.commit()
+        
+        if current_user.username == 'bri':
+            flash('Custom metric created and approved!', category='success')
+        else:
+            flash('Custom metric created! Waiting for admin approval.', category='success')
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating metric: {e}")
+        flash('Error creating custom metric. Please try again.', category='error')
+    
+    return redirect(url_for('views.metric_settings'))
+
+@views.route('/delete-custom-metric/<int:metric_id>', methods=['POST'])
+@login_required
+def delete_custom_metric(metric_id):
+    """Delete a custom metric"""
+    try:
+        metric = CustomMetric.query.get_or_404(metric_id)
+        
+        # Only allow creator or admin to delete
+        if metric.creator_id != current_user.id and current_user.username != 'bri':
+            return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+        
+        # Delete associated entries and preferences
+        CustomMetricEntry.query.filter_by(metric_id=metric_id).delete()
+        MetricPreference.query.filter_by(metric_type='custom', metric_id=metric_id).delete()
+        
+        db.session.delete(metric)
+        db.session.commit()
+        
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting metric: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 

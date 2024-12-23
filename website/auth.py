@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
-from .models import User, Entry
+from .models import User, Entry, CustomMetric, CustomMetricEntry
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
 from flask_login import login_user, login_required, logout_user, current_user
@@ -87,27 +87,24 @@ def leaderboard():
     if timeframe == 'day':
         start_date = today
         end_date = today
+        timeframe_display = 'Today'
     elif timeframe == 'week':
-        # Start from Monday of current week and include all days up to Sunday
         start_date = today - timedelta(days=today.weekday())  # Monday
         end_date = start_date + timedelta(days=6)  # Sunday
+        timeframe_display = 'This Week'
     elif timeframe == 'month':
-        # Start from first day of current month
         start_date = today.replace(day=1)
-        # Last day of current month
         if today.month == 12:
             end_date = today.replace(day=31)
         else:
             end_date = (today.replace(day=1, month=today.month + 1) - timedelta(days=1))
+        timeframe_display = 'This Month'
     elif timeframe == 'year':
-        # Start from first day of current year
         start_date = today.replace(month=1, day=1)
-        # Last day of current year
         end_date = today.replace(month=12, day=31)
+        timeframe_display = 'This Year'
     
-    print(f"Date range: {start_date} to {end_date}")  # Debug print
-    
-    # Define metric mappings
+    # Define metric mappings for default metrics
     metric_columns = {
         'running_mileage': Entry.running_mileage,
         'calories': Entry.calories,
@@ -123,48 +120,72 @@ def leaderboard():
         'sleep': 'hours',
         'screen_time': 'hours'
     }
-    
-    # Query to get aggregated data for the leaderboard
-    query = db.session.query(
-        User.id.label('user_id'),
-        User.username.label('username'),
-        func.sum(metric_columns[metric]).label('score')
-    ).join(Entry).filter(
-        Entry.date >= start_date,
-        Entry.date <= (end_date if timeframe != 'day' else today)
-    ).group_by(User.id, User.username)
 
-    # For screen time, we want to sort ascending (less is better)
-    if metric == 'screen_time':
-        query = query.order_by(func.sum(metric_columns[metric]).asc())
+    # Check if metric is a custom metric
+    custom_metric = None
+    if metric.startswith('custom_'):
+        try:
+            custom_metric_id = int(metric.split('_')[1])
+            custom_metric = CustomMetric.query.get(custom_metric_id)
+        except (IndexError, ValueError):
+            pass
+
+    if custom_metric:
+        # Query for custom metric
+        query = db.session.query(
+            User.id.label('user_id'),
+            User.username.label('username'),
+            func.sum(CustomMetricEntry.value).label('score')
+        ).join(Entry).join(CustomMetricEntry).filter(
+            CustomMetricEntry.metric_id == custom_metric_id,
+            Entry.date >= start_date,
+            Entry.date <= end_date
+        ).group_by(User.id, User.username)
+
+        # Sort based on is_higher_better flag
+        if custom_metric.is_higher_better:
+            query = query.order_by(func.sum(CustomMetricEntry.value).desc())
+        else:
+            query = query.order_by(func.sum(CustomMetricEntry.value).asc())
+
+        metric_unit = custom_metric.unit
     else:
-        query = query.order_by(func.sum(metric_columns[metric]).desc())
-    
-    print(f"SQL Query: {query}")  # Debug print
+        # Query for default metric
+        query = db.session.query(
+            User.id.label('user_id'),
+            User.username.label('username'),
+            func.sum(metric_columns[metric]).label('score')
+        ).join(Entry).filter(
+            Entry.date >= start_date,
+            Entry.date <= end_date
+        ).group_by(User.id, User.username)
+
+        # For screen time, sort ascending (less is better)
+        if metric == 'screen_time':
+            query = query.order_by(func.sum(metric_columns[metric]).asc())
+        else:
+            query = query.order_by(func.sum(metric_columns[metric]).desc())
+
+        metric_unit = metric_units[metric]
     
     leaderboard_data = query.all()
-    print(f"Leaderboard data: {leaderboard_data}")  # Debug print
     
     # Format the data for template
     leaderboard = [{
         'user_id': entry.user_id,
         'username': entry.username,
-        'score': round(entry.score, 2) if entry.score else 0,
-        'unit': metric_units[metric]
+        'score': round(entry.score if entry.score else 0, 2),
+        'unit': metric_unit
     } for entry in leaderboard_data]
-    
-    # Add timeframe to template for display
-    timeframe_display = {
-        'day': 'Today',
-        'week': 'This Week',
-        'month': 'This Month',
-        'year': 'This Year'
-    }
+
+    # Get list of custom metrics for the dropdown
+    custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
     
     return render_template('leaderboard.html', 
                          leaderboard=leaderboard,
                          current_user=current_user,
                          user=current_user,
-                         selected_timeframe=timeframe_display[timeframe],
+                         selected_timeframe=timeframe_display,
                          selected_metric=metric,
+                         custom_metrics=custom_metrics,
                          request=request)

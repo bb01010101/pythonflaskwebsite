@@ -16,6 +16,33 @@ class User(db.Model, UserMixin):
     posts = db.relationship('Post', backref='author', lazy=True)
     comments = db.relationship('Comment', backref='author', lazy=True)
     likes = db.relationship('Like', backref='user', lazy=True)
+    custom_metrics = db.relationship('CustomMetric', backref='creator', lazy=True)
+    metric_preferences = db.relationship('MetricPreference', backref='user', lazy=True)
+
+class CustomMetric(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    unit = db.Column(db.String(50))
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    is_higher_better = db.Column(db.Boolean, default=True)  # True if higher values are better
+    is_approved = db.Column(db.Boolean, default=False)  # Admin approval status
+    metric_entries = db.relationship('CustomMetricEntry', backref='metric', lazy=True)
+
+class CustomMetricEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    metric_id = db.Column(db.Integer, db.ForeignKey('custom_metric.id'), nullable=False)
+    entry_id = db.Column(db.Integer, db.ForeignKey('entry.id'), nullable=False)
+    value = db.Column(db.Float, nullable=False)
+
+class MetricPreference(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    metric_type = db.Column(db.String(50), nullable=False)  # 'default' or 'custom'
+    metric_id = db.Column(db.Integer, db.ForeignKey('custom_metric.id'), nullable=True)  # Only for custom metrics
+    is_active = db.Column(db.Boolean, default=True)
+    priority = db.Column(db.Integer, default=0)  # For ordering metrics
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -24,9 +51,10 @@ class Entry(db.Model):
     calories = db.Column(db.Integer, default=0)
     water_intake = db.Column(db.Integer, default=0)
     running_mileage = db.Column(db.Float, default=0)
-    screen_time = db.Column(db.Float, default=0)  # Hours of screen time
+    screen_time = db.Column(db.Float, default=0)
     notes = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    custom_entries = db.relationship('CustomMetricEntry', backref='entry', lazy=True)
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)

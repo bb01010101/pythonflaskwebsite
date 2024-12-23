@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Default Metrics Section -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header theme-header">
+                    <h2 class="mb-0">
+                        <i class="fas fa-sliders-h me-2"></i>Metric Preferences
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('views.save_metric_preferences') }}">
+                        <h5 class="mb-3">Default Metrics</h5>
+                        <div class="row g-3">
+                            {% for metric in default_metrics %}
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="metric_{{ metric.name }}" 
+                                           name="default_metrics" 
+                                           value="{{ metric.name }}"
+                                           {% if metric.is_active %}checked{% endif %}>
+                                    <label class="form-check-label" for="metric_{{ metric.name }}">
+                                        {{ metric.display_name }}
+                                        <small class="text-muted d-block">{{ metric.description }}</small>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h5 class="mb-3">Custom Metrics</h5>
+                        <div class="custom-metrics-container mb-3">
+                            {% for metric in custom_metrics %}
+                            <div class="custom-metric-item mb-3 p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="custom_{{ metric.id }}" 
+                                               name="custom_metrics" 
+                                               value="{{ metric.id }}"
+                                               {% if metric.is_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="custom_{{ metric.id }}">
+                                            {{ metric.name }}
+                                            <small class="text-muted d-block">{{ metric.description }}</small>
+                                            <small class="text-muted d-block">Unit: {{ metric.unit }}</small>
+                                        </label>
+                                    </div>
+                                    {% if metric.creator_id == current_user.id %}
+                                    <button type="button" class="btn btn-link text-danger"
+                                            onclick="deleteCustomMetric({{ metric.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button type="submit" class="btn theme-btn">
+                            <i class="fas fa-save me-2"></i>Save Preferences
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Create Custom Metric Section -->
+            <div class="card shadow-sm">
+                <div class="card-header theme-header-secondary">
+                    <h2 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Create Custom Metric
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('views.create_custom_metric') }}">
+                        <div class="mb-3">
+                            <label for="metric_name" class="form-label">Metric Name</label>
+                            <input type="text" class="form-control" id="metric_name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="metric_description" class="form-label">Description</label>
+                            <textarea class="form-control" id="metric_description" name="description" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="metric_unit" class="form-label">Unit of Measurement</label>
+                            <input type="text" class="form-control" id="metric_unit" name="unit" required>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_higher_better" name="is_higher_better" checked>
+                                <label class="form-check-label" for="is_higher_better">
+                                    Higher values are better
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn theme-btn">
+                            <i class="fas fa-plus me-2"></i>Create Metric
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .theme-header {
+        background-color: #40E0D0;
+        color: white;
+        padding: 1rem;
+        border: none;
+    }
+
+    .theme-header-secondary {
+        background-color: #4CAF50;
+        color: white;
+        padding: 1rem;
+        border: none;
+    }
+
+    .theme-btn {
+        background-color: #40E0D0;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .theme-btn:hover {
+        background-color: #3BC7B9;
+        color: white;
+    }
+
+    .form-check-input:checked {
+        background-color: #40E0D0;
+        border-color: #40E0D0;
+    }
+
+    .custom-metric-item {
+        background-color: #f8f9fa;
+        transition: all 0.2s ease;
+    }
+
+    .custom-metric-item:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+
+<script>
+function deleteCustomMetric(metricId) {
+    if (confirm('Are you sure you want to delete this custom metric? This action cannot be undone.')) {
+        fetch(`/delete-custom-metric/${metricId}`, {
+            method: 'POST',
+        }).then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Error deleting metric: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting metric');
+        });
+    }
+}
+</script>
+{% endblock %} 
