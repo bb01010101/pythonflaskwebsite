@@ -17,11 +17,22 @@ views = Blueprint('views', __name__)
 #Configure image handling for database storage
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-# Add these environment variables to your configuration
-strava_integration = StravaIntegration(
-    client_id=os.environ.get('STRAVA_CLIENT_ID'),
-    client_secret=os.environ.get('STRAVA_CLIENT_SECRET')
-)
+def get_strava_integration():
+    client_id = os.environ.get('STRAVA_CLIENT_ID')
+    client_secret = os.environ.get('STRAVA_CLIENT_SECRET')
+    
+    if client_id and client_secret:
+        try:
+            return StravaIntegration(
+                client_id=client_id,
+                client_secret=client_secret
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize StravaIntegration: {e}")
+            return None
+    return None
+
+strava_integration = get_strava_integration()
 
 # Add some logging to debug the values
 logger.info(f"Strava Client ID: {os.environ.get('STRAVA_CLIENT_ID')}")
@@ -721,15 +732,21 @@ def delete_custom_metric(metric_id):
 @views.route('/settings')
 @login_required
 def settings():
+    strava_available = strava_integration is not None
     return render_template(
         'settings.html',
         user=current_user,
-        strava_connected=current_user.strava_access_token is not None
+        strava_connected=current_user.strava_access_token is not None if strava_available else False,
+        strava_available=strava_available
     )
 
 @views.route('/strava/auth')
 @login_required
 def strava_auth():
+    if not strava_integration:
+        flash('Strava integration is not available at this time.', 'error')
+        return redirect(url_for('views.settings'))
+        
     redirect_uri = url_for('views.strava_callback', _external=True)
     auth_url = strava_integration.get_auth_url(redirect_uri)
     return redirect(auth_url)

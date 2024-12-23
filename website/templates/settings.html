@@ -16,7 +16,11 @@
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">Strava Integration</h5>
-            {% if not strava_connected %}
+            {% if not strava_available %}
+                <div class="alert alert-warning">
+                    Strava integration is currently unavailable. Please try again later.
+                </div>
+            {% elif not strava_connected %}
                 <p>Connect your Strava account to automatically sync your activities.</p>
                 <a href="{{ url_for('views.strava_auth') }}" class="btn btn-primary">
                     <i class="fab fa-strava"></i> Connect to Strava
