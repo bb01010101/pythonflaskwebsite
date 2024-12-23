@@ -860,47 +860,61 @@ def leaderboard():
     
     # Get current date info
     today = datetime.date.today()
-    start_of_week = today - datetime.timedelta(days=today.weekday())
-    start_of_month = today.replace(day=1)
-    start_of_year = today.replace(month=1, day=1)
-
-    # Base query
-    base_query = db.session.query(
-        Entry.user_id,
+    
+    # Create the base query
+    query = db.session.query(
+        User.id.label('user_id'),
         User.username,
-        db.func.coalesce(db.func.sum(getattr(Entry, metric)), 0).label('total')  # Handle NULL values
-    ).join(User)
+        Entry.date,
+        getattr(Entry, metric).label('value')
+    ).join(Entry, User.id == Entry.user_id)
 
-    # Apply date filter based on timeframe
+    # Filter by date based on timeframe
     if timeframe == 'day':
-        query = base_query.filter(Entry.date == today)  # Exact date match for today
+        query = query.filter(Entry.date == today)
         timeframe_text = "Today"
     elif timeframe == 'week':
-        query = base_query.filter(Entry.date.between(start_of_week, today))  # Between start of week and today
+        week_start = today - datetime.timedelta(days=today.weekday())
+        query = query.filter(Entry.date >= week_start)
         timeframe_text = "This Week"
     elif timeframe == 'month':
-        query = base_query.filter(Entry.date.between(start_of_month, today))  # Between start of month and today
+        query = query.filter(
+            db.extract('year', Entry.date) == today.year,
+            db.extract('month', Entry.date) == today.month
+        )
         timeframe_text = "This Month"
     elif timeframe == 'year':
-        query = base_query.filter(Entry.date.between(start_of_year, today))  # Between start of year and today
+        query = query.filter(db.extract('year', Entry.date) == today.year)
         timeframe_text = "This Year"
 
-    # Group and order results
-    results = query.group_by(Entry.user_id, User.username)\
-                  .order_by(db.text('total DESC'))\
-                  .all()
+    # Execute query and process results
+    entries = query.all()
+    
+    # Calculate totals for each user
+    user_totals = {}
+    for entry in entries:
+        if entry.user_id not in user_totals:
+            user_totals[entry.user_id] = {
+                'username': entry.username,
+                'total': 0
+            }
+        user_totals[entry.user_id]['total'] += entry.value if entry.value else 0
 
-    # Format the leaderboard data
-    leaderboard_data = []
-    for user_id, username, score in results:
-        leaderboard_data.append({
+    # Convert to sorted list
+    leaderboard_data = [
+        {
             'user_id': user_id,
-            'username': username,
-            'score': round(score, 2) if score else 0,
+            'username': data['username'],
+            'score': round(data['total'], 2),
             'unit': 'miles' if metric == 'running_mileage' else 
                    'hours' if metric in ['sleep_hours', 'screen_time'] else
                    'oz' if metric == 'water_intake' else ''
-        })
+        }
+        for user_id, data in user_totals.items()
+    ]
+    
+    # Sort by score descending
+    leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
 
     # Get custom metrics for the dropdown
     custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
