@@ -3,7 +3,7 @@ from stravalib.exc import AccessUnauthorized
 from datetime import datetime, timedelta
 from flask import current_app
 from . import db
-from .models import User, Activity
+from .models import User, Activity, Entry
 import requests
 import logging
 
@@ -73,7 +73,6 @@ class StravaIntegration:
                 if not existing_activity:
                     # Handle distance conversion
                     try:
-                        # Try different ways to get the distance
                         if hasattr(activity.distance, 'meters'):
                             distance = float(activity.distance.meters)
                         elif hasattr(activity.distance, 'get_num'):
@@ -84,25 +83,48 @@ class StravaIntegration:
                         logger.warning(f"Could not parse distance for activity {activity.id}, using 0")
                         distance = 0.0
 
-                    # Handle duration conversion
-                    try:
-                        duration = float(activity.moving_time.total_seconds())
-                    except (AttributeError, TypeError):
-                        logger.warning(f"Could not parse duration for activity {activity.id}, using 0")
-                        duration = 0.0
+                    # Convert meters to miles
+                    distance_miles = distance * 0.000621371
 
-                    # Create new activity
+                    # Get the activity date
+                    activity_date = activity.start_date.date()
+
+                    # Find or create an Entry for this date
+                    entry = Entry.query.filter_by(
+                        user_id=user.id,
+                        date=activity_date
+                    ).first()
+
+                    if entry:
+                        # Update existing entry's running mileage
+                        entry.running_mileage = entry.running_mileage + distance_miles
+                        logger.info(f"Updated entry for {activity_date} with additional {distance_miles} miles")
+                    else:
+                        # Create new entry
+                        entry = Entry(
+                            user_id=user.id,
+                            date=activity_date,
+                            running_mileage=distance_miles,
+                            sleep_hours=0,
+                            calories=0,
+                            water_intake=0,
+                            screen_time=0
+                        )
+                        db.session.add(entry)
+                        logger.info(f"Created new entry for {activity_date} with {distance_miles} miles")
+
+                    # Still create the Activity record
                     new_activity = Activity(
                         user_id=user.id,
                         strava_id=str(activity.id),
                         activity_type=activity.type,
                         distance=distance,
-                        duration=duration,
+                        duration=float(activity.moving_time.total_seconds()),
                         date=activity.start_date,
                         calories=activity.calories if hasattr(activity, 'calories') else 0
                     )
-                    logger.info(f"Adding new activity: {activity.type} - {distance}m on {activity.start_date}")
                     db.session.add(new_activity)
+                    logger.info(f"Adding new activity: {activity.type} - {distance}m on {activity.start_date}")
             
             db.session.commit()
             return True

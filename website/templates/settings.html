@@ -22,16 +22,21 @@
                 </div>
             {% elif not strava_connected %}
                 <p>Connect your Strava account to automatically sync your activities.</p>
-                <a href="{{ url_for('views.strava_auth') }}" class="btn btn-primary">
+                <a href="{{ url_for('views.strava_auth') }}" class="btn btn-warning">
                     <i class="fab fa-strava"></i> Connect to Strava
                 </a>
             {% else %}
                 <p class="text-success">
                     <i class="fas fa-check-circle"></i> Connected to Strava
                 </p>
-                <a href="{{ url_for('views.disconnect_strava') }}" class="btn btn-outline-danger">
-                    Disconnect Strava
-                </a>
+                <div class="btn-group">
+                    <a href="{{ url_for('views.strava_sync') }}" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Sync Activities
+                    </a>
+                    <a href="{{ url_for('views.disconnect_strava') }}" class="btn btn-outline-danger">
+                        Disconnect Strava
+                    </a>
+                </div>
             {% endif %}
         </div>
     </div>

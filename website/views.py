@@ -810,3 +810,26 @@ def disconnect_strava():
     flash('Disconnected from Strava', 'success')
     return redirect(url_for('views.settings'))
 
+@views.route('/strava/sync')
+@login_required
+def strava_sync():
+    if not strava_integration:
+        flash('Strava integration is not available at this time.', 'error')
+        return redirect(url_for('views.settings'))
+        
+    if not current_user.strava_access_token:
+        flash('Please connect your Strava account first.', 'error')
+        return redirect(url_for('views.settings'))
+        
+    try:
+        success = strava_integration.sync_activities(current_user)
+        if success:
+            flash('Successfully synced Strava activities!', 'success')
+        else:
+            flash('Failed to sync Strava activities. Please try again.', 'error')
+    except Exception as e:
+        logger.error(f"Error syncing Strava activities: {str(e)}", exc_info=True)
+        flash('Error syncing activities. Please try again.', 'error')
+        
+    return redirect(url_for('views.settings'))
+
