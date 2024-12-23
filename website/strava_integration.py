@@ -71,20 +71,45 @@ class StravaIntegration:
                 ).first()
                 
                 if not existing_activity:
+                    # Handle distance conversion
+                    try:
+                        # Try different ways to get the distance
+                        if hasattr(activity.distance, 'meters'):
+                            distance = float(activity.distance.meters)
+                        elif hasattr(activity.distance, 'get_num'):
+                            distance = float(activity.distance.get_num())
+                        else:
+                            distance = float(activity.distance)
+                    except (AttributeError, TypeError):
+                        logger.warning(f"Could not parse distance for activity {activity.id}, using 0")
+                        distance = 0.0
+
+                    # Handle duration conversion
+                    try:
+                        duration = float(activity.moving_time.total_seconds())
+                    except (AttributeError, TypeError):
+                        logger.warning(f"Could not parse duration for activity {activity.id}, using 0")
+                        duration = 0.0
+
+                    # Create new activity
                     new_activity = Activity(
                         user_id=user.id,
                         strava_id=str(activity.id),
                         activity_type=activity.type,
-                        distance=float(activity.distance.meters),
-                        duration=float(activity.moving_time.total_seconds()),
+                        distance=distance,
+                        duration=duration,
                         date=activity.start_date,
                         calories=activity.calories if hasattr(activity, 'calories') else 0
                     )
+                    logger.info(f"Adding new activity: {activity.type} - {distance}m on {activity.start_date}")
                     db.session.add(new_activity)
             
             db.session.commit()
             return True
             
         except AccessUnauthorized:
-            # Handle token refresh here
+            logger.error("Access unauthorized when syncing activities")
+            return False
+        except Exception as e:
+            logger.error(f"Error syncing activities: {str(e)}", exc_info=True)
             return False 
