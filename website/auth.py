@@ -127,43 +127,45 @@ def leaderboard():
         # Get the actual database column name
         db_column = metric_mapping[metric]
 
-        # Subquery to get the sum of metrics for each user within the date range
-        subquery = db.session.query(
-            Entry.user_id,
-            func.sum(getattr(Entry, db_column)).label('total')
-        ).filter(
+        # First, get all entries for the date range
+        entries = Entry.query.filter(
             Entry.date >= start_date,
             Entry.date <= end_date
-        ).group_by(Entry.user_id).subquery()
+        ).all()
+        print(f"Found {len(entries)} entries in date range")  # Debug log
 
-        # Main query to get all users and their scores
-        query = db.session.query(
-            User.id.label('user_id'),
-            User.username.label('username'),
-            func.coalesce(subquery.c.total, 0).label('score')
-        ).outerjoin(
-            subquery,
-            User.id == subquery.c.user_id
-        )
+        # Create a dictionary to store user totals
+        user_totals = {}
+        for entry in entries:
+            value = getattr(entry, db_column)
+            if value is not None:
+                if entry.user_id not in user_totals:
+                    user_totals[entry.user_id] = 0
+                user_totals[entry.user_id] += value
 
-        # Sort based on metric type
+        # Get all users
+        users = User.query.all()
+        print(f"Found {len(users)} total users")  # Debug log
+
+        # Create leaderboard data
+        leaderboard = []
+        for user in users:
+            score = user_totals.get(user.id, 0)
+            leaderboard.append({
+                'user_id': user.id,
+                'username': user.username,
+                'score': round(score, 2),
+                'unit': metric_units[metric]
+            })
+
+        # Sort the leaderboard
         if metric == 'screen_time':
-            query = query.order_by(func.coalesce(subquery.c.total, 0).asc())
+            leaderboard.sort(key=lambda x: x['score'])
         else:
-            query = query.order_by(func.coalesce(subquery.c.total, 0).desc())
-
-        leaderboard_data = query.all()
-        print(f"Query returned {len(leaderboard_data)} results")  # Debug log
-
-        # Format the data for template
-        leaderboard = [{
-            'user_id': entry.user_id,
-            'username': entry.username,
-            'score': round(entry.score if entry.score else 0, 2),
-            'unit': metric_units[metric]
-        } for entry in leaderboard_data]
+            leaderboard.sort(key=lambda x: x['score'], reverse=True)
 
         # Debug print some entries
+        print("\nLeaderboard Preview:")
         for entry in leaderboard[:5]:  # Print first 5 entries
             print(f"User: {entry['username']}, Score: {entry['score']} {entry['unit']}")
 
