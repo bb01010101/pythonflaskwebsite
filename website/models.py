@@ -68,7 +68,7 @@ class Post(db.Model):
     image_data = db.Column(db.LargeBinary)
     image_filename = db.Column(db.String(255))
     likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
-    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
+    comments = db.relationship('Comment', backref=db.backref('post_parent', lazy=True), lazy=True, cascade='all, delete-orphan')
 
     def like_count(self):
         return len(self.likes)
@@ -87,7 +87,6 @@ class Comment(db.Model):
     timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
-    post = db.relationship('Post', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
 
 
 
