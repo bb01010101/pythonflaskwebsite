@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
-from .models import User, Entry, CustomMetric, CustomMetricEntry
+from .models import User, Entry
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
 from flask_login import login_user, login_required, logout_user, current_user
@@ -105,7 +105,7 @@ def leaderboard():
             end_date = today.replace(month=12, day=31)
             timeframe_display = 'This Year'
 
-        print(f"Date range: {start_date} to {end_date}")  # Debug log
+        print(f"Calculating leaderboard for {metric} from {start_date} to {end_date}")
         
         # Map metric names to their database column names
         metric_mapping = {
@@ -127,47 +127,39 @@ def leaderboard():
         # Get the actual database column name
         db_column = metric_mapping[metric]
 
-        # First, get all entries for the date range
-        entries = Entry.query.filter(
-            Entry.date >= start_date,
-            Entry.date <= end_date
-        ).all()
-        print(f"Found {len(entries)} entries in date range")  # Debug log
+        # Query to get all users with their total metric values
+        query = db.session.query(
+            User.id,
+            User.username,
+            func.coalesce(func.sum(getattr(Entry, db_column)), 0).label('total')
+        ).outerjoin(
+            Entry, db.and_(
+                User.id == Entry.user_id,
+                Entry.date >= start_date,
+                Entry.date <= end_date
+            )
+        ).group_by(User.id, User.username)
 
-        # Create a dictionary to store user totals
-        user_totals = {}
-        for entry in entries:
-            value = getattr(entry, db_column)
-            if value is not None:
-                if entry.user_id not in user_totals:
-                    user_totals[entry.user_id] = 0
-                user_totals[entry.user_id] += value
+        # Sort based on metric type
+        if metric == 'screen_time':
+            query = query.order_by(func.coalesce(func.sum(getattr(Entry, db_column)), 0).asc())
+        else:
+            query = query.order_by(func.coalesce(func.sum(getattr(Entry, db_column)), 0).desc())
 
-        # Get all users
-        users = User.query.all()
-        print(f"Found {len(users)} total users")  # Debug log
+        results = query.all()
+        print(f"Query returned {len(results)} results")
 
         # Create leaderboard data
         leaderboard = []
-        for user in users:
-            score = user_totals.get(user.id, 0)
+        for result in results:
+            score = float(result.total) if result.total is not None else 0
+            print(f"User {result.username}: {score} {metric_units[metric]}")  # Debug print
             leaderboard.append({
-                'user_id': user.id,
-                'username': user.username,
+                'user_id': result.id,
+                'username': result.username,
                 'score': round(score, 2),
                 'unit': metric_units[metric]
             })
-
-        # Sort the leaderboard
-        if metric == 'screen_time':
-            leaderboard.sort(key=lambda x: x['score'])
-        else:
-            leaderboard.sort(key=lambda x: x['score'], reverse=True)
-
-        # Debug print some entries
-        print("\nLeaderboard Preview:")
-        for entry in leaderboard[:5]:  # Print first 5 entries
-            print(f"User: {entry['username']}, Score: {entry['score']} {entry['unit']}")
 
         return render_template('leaderboard.html',
                              leaderboard=leaderboard,
@@ -178,8 +170,8 @@ def leaderboard():
                              request=request)
                              
     except Exception as e:
-        print(f"Error in leaderboard route: {str(e)}")  # Debug log
+        print(f"Error in leaderboard route: {str(e)}")
         import traceback
-        traceback.print_exc()  # Print full error traceback
+        traceback.print_exc()
         flash('Error loading leaderboard. Please try again.', category='error')
         return redirect(url_for('views.home'))
