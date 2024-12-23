@@ -103,7 +103,11 @@ def home():
 @views.route('/view_charts', methods=['GET', 'POST'])
 @login_required
 def view_charts():
+    # Get manual entries
     entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.date.asc()).all()
+    
+    # Get Strava activities
+    activities = Activity.query.filter_by(user_id=current_user.id).order_by(Activity.date.asc()).all()
     
     # Prepare data for charts
     chart_data = {
@@ -137,9 +141,13 @@ def view_charts():
         }
     }
     
-    # Process daily data
+    # Process daily data from manual entries
     for entry in entries:
         date_str = entry.date.strftime('%Y-%m-%d')
+        # Initialize if not exists
+        if date_str not in chart_data['daily']['running_mileage']:
+            chart_data['daily']['running_mileage'][date_str] = 0
+            
         chart_data['daily']['sleep_hours'][date_str] = entry.sleep_hours
         chart_data['daily']['calories'][date_str] = entry.calories
         chart_data['daily']['water_intake'][date_str] = entry.water_intake
@@ -188,7 +196,40 @@ def view_charts():
         chart_data['yearly']['running_mileage'][year_str] += entry.running_mileage
         chart_data['yearly']['screen_time'][year_str] += entry.screen_time
     
-    print("Entries found:", len(entries))  # Debug print
+    # Add Strava activities to running mileage
+    for activity in activities:
+        date_str = activity.date.strftime('%Y-%m-%d')
+        # Initialize if not exists
+        if date_str not in chart_data['daily']['running_mileage']:
+            chart_data['daily']['running_mileage'][date_str] = 0
+        # Add Strava miles (convert from meters to miles)
+        chart_data['daily']['running_mileage'][date_str] += activity.distance * 0.000621371
+        
+        # Add to weekly data
+        week_str = activity.date.strftime('%Y-W%W')
+        if week_str not in chart_data['weekly']['running_mileage']:
+            chart_data['weekly']['running_mileage'][week_str] = 0
+        chart_data['weekly']['running_mileage'][week_str] += activity.distance * 0.000621371
+        
+        # Add to monthly data
+        month_str = activity.date.strftime('%Y-%m')
+        if month_str not in chart_data['monthly']['running_mileage']:
+            chart_data['monthly']['running_mileage'][month_str] = 0
+        chart_data['monthly']['running_mileage'][month_str] += activity.distance * 0.000621371
+        
+        # Add to yearly data
+        year_str = activity.date.strftime('%Y')
+        if year_str not in chart_data['yearly']['running_mileage']:
+            chart_data['yearly']['running_mileage'][year_str] = 0
+        chart_data['yearly']['running_mileage'][year_str] += activity.distance * 0.000621371
+    
+    # Round all running mileage values to 2 decimal places
+    for timeframe in ['daily', 'weekly', 'monthly', 'yearly']:
+        for date_str in chart_data[timeframe]['running_mileage']:
+            chart_data[timeframe]['running_mileage'][date_str] = round(chart_data[timeframe]['running_mileage'][date_str], 2)
+    
+    print("Manual entries found:", len(entries))  # Debug print
+    print("Strava activities found:", len(activities))  # Debug print
     print("Chart data structure:", json.dumps(chart_data, indent=2))  # Debug print
     
     return render_template("view_charts.html", user=current_user, chart_data=chart_data)
@@ -875,62 +916,41 @@ def leaderboard():
     
     leaderboard_data = []
     
-    if metric == 'running_mileage':
-        # Get manual entries
-        manual_entries = db.session.query(
-            User.id.label('user_id'),
-            User.username,
-            db.func.coalesce(db.func.sum(Entry.running_mileage), 0).label('manual_miles')
-        ).join(Entry, User.id == Entry.user_id)\
-         .filter(Entry.date >= start_date)\
-         .group_by(User.id, User.username).all()
-        
-        # Get Strava activities
-        strava_entries = db.session.query(
-            User.id.label('user_id'),
-            User.username,
-            db.func.coalesce(db.func.sum(Activity.distance * 0.000621371), 0).label('strava_miles')
-        ).join(Activity, User.id == Activity.user_id)\
-         .filter(db.func.date(Activity.date) >= start_date)\
-         .group_by(User.id, User.username).all()
-        
-        # Create dictionaries for easy lookup
-        manual_dict = {(e.user_id, e.username): e.manual_miles for e in manual_entries}
-        strava_dict = {(e.user_id, e.username): e.strava_miles for e in strava_entries}
-        
-        # Combine all unique users
-        all_users = set(manual_dict.keys()) | set(strava_dict.keys())
-        
-        for user_id, username in all_users:
-            total_miles = manual_dict.get((user_id, username), 0) + strava_dict.get((user_id, username), 0)
-            if total_miles > 0:
-                logger.info(f"User {username} - Total miles: {total_miles}")
-                leaderboard_data.append({
-                    'user_id': user_id,
-                    'username': username,
-                    'score': round(float(total_miles), 2),
-                    'unit': 'miles'
-                })
+    # Get all users
+    users = User.query.all()
     
-    else:
-        # For other metrics, query Entry table directly
-        entries = db.session.query(
-            User.id,
-            User.username,
-            db.func.sum(getattr(Entry, metric)).label('total')
-        ).join(Entry)\
-         .filter(Entry.date >= start_date)\
-         .group_by(User.id, User.username)\
-         .having(db.func.sum(getattr(Entry, metric)) > 0)\
-         .all()
+    for user in users:
+        total_value = 0
         
+        # Get entries for the user within the date range
+        entries = Entry.query.filter(
+            Entry.user_id == user.id,
+            Entry.date >= start_date,
+            Entry.date <= today
+        ).all()
+        
+        # Sum up the values for the selected metric
         for entry in entries:
-            logger.info(f"User {entry.username} - {metric}: {entry.total}")
+            if metric == 'running_mileage':
+                total_value += entry.running_mileage
+            elif metric == 'sleep_hours':
+                total_value += entry.sleep_hours
+            elif metric == 'calories':
+                total_value += entry.calories
+            elif metric == 'water_intake':
+                total_value += entry.water_intake
+            elif metric == 'screen_time':
+                total_value += entry.screen_time
+        
+        # Only add to leaderboard if they have a value greater than 0
+        if total_value > 0:
+            logger.info(f"User {user.username} - {metric}: {total_value}")
             leaderboard_data.append({
-                'user_id': entry.id,
-                'username': entry.username,
-                'score': round(float(entry.total), 2),
-                'unit': 'hours' if metric in ['sleep_hours', 'screen_time'] else 
+                'user_id': user.id,
+                'username': user.username,
+                'score': round(float(total_value), 2),
+                'unit': 'miles' if metric == 'running_mileage' else
+                       'hours' if metric in ['sleep_hours', 'screen_time'] else
                        'oz' if metric == 'water_intake' else ''
             })
     
