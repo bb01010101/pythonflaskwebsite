@@ -757,20 +757,28 @@ def strava_callback():
     try:
         code = request.args.get('code')
         if not code:
+            logger.error("No code received from Strava")
             flash('Authorization failed: No code received from Strava', 'error')
             return redirect(url_for('views.settings'))
             
+        logger.info("Exchanging code for token...")
         token_response = strava_integration.exchange_code_for_token(code)
+        logger.info(f"Received token response: {token_response}")
         
         current_user.strava_access_token = token_response['access_token']
         current_user.strava_refresh_token = token_response['refresh_token']
-        current_user.strava_token_expires_at = datetime.fromtimestamp(token_response['expires_at'])
+        current_user.strava_token_expires_at = datetime.datetime.fromtimestamp(token_response['expires_at'])
         current_user.strava_athlete_id = str(token_response['athlete'].id)
         
+        logger.info("Saving tokens to database...")
         db.session.commit()
         
-        # Sync the last two weeks of activities
-        strava_integration.sync_activities(current_user)
+        logger.info("Starting activity sync...")
+        sync_result = strava_integration.sync_activities(current_user)
+        if sync_result:
+            logger.info("Activity sync successful")
+        else:
+            logger.warning("Activity sync returned False")
         
         flash('Successfully connected to Strava!', 'success')
         return redirect(url_for('views.settings'))
