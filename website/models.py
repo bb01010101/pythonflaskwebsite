@@ -1,13 +1,7 @@
 from . import db
-from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin 
 from sqlalchemy.sql import func
 import datetime
-import io
-import psycopg2
-from sqlalchemy import LargeBinary
-
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -93,8 +87,6 @@ class Comment(db.Model):
     timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
-    
-    # Single relationship definition
     post = db.relationship('Post', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
 
 

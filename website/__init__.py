@@ -17,10 +17,15 @@ def create_app():
     
     # PostgreSQL Database URL configuration
     DATABASE_URL = os.getenv('DATABASE_URL')
-    if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    if DATABASE_URL:
+        # Handle potential "postgres://" style URLs
+        if DATABASE_URL.startswith('postgres://'):
+            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+    else:
+        # Fallback for development
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
     
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     print(f"Using database URL: {DATABASE_URL}")  # Debug log
@@ -35,7 +40,7 @@ def create_app():
     app.register_blueprint(auth, url_prefix='/') 
     app.register_blueprint(views, url_prefix='/') 
 
-    from .models import User, Entry, Message
+    from .models import User, Entry, Message, Post, Like, Comment, CustomMetric, MetricPreference, CustomMetricEntry
 
     with app.app_context():
         try:
@@ -43,6 +48,8 @@ def create_app():
             print("Database tables created successfully")  # Debug log
         except Exception as e:
             print(f"Error creating database tables: {str(e)}")  # Debug log
+            import traceback
+            traceback.print_exc()
 
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
@@ -79,6 +86,6 @@ def create_app():
             return "just now"
 
     app.jinja_env.filters['timeago'] = timeago
-    
+
     return app
 
