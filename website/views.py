@@ -861,60 +861,46 @@ def leaderboard():
     # Get current date info
     today = datetime.date.today()
     
-    # Create the base query
-    query = db.session.query(
-        User.id.label('user_id'),
-        User.username,
-        Entry.date,
-        getattr(Entry, metric).label('value')
-    ).join(Entry, User.id == Entry.user_id)
-
-    # Filter by date based on timeframe
+    # Determine the start date based on the timeframe
     if timeframe == 'day':
-        query = query.filter(Entry.date == today)
+        start_date = today
         timeframe_text = "Today"
     elif timeframe == 'week':
-        week_start = today - datetime.timedelta(days=today.weekday())
-        query = query.filter(Entry.date >= week_start)
+        start_date = today - datetime.timedelta(days=today.weekday())
         timeframe_text = "This Week"
     elif timeframe == 'month':
-        month_start = today.replace(day=1)
-        query = query.filter(Entry.date >= month_start)
+        start_date = today.replace(day=1)
         timeframe_text = "This Month"
     elif timeframe == 'year':
-        year_start = today.replace(month=1, day=1)
-        query = query.filter(Entry.date >= year_start)
+        start_date = today.replace(month=1, day=1)
         timeframe_text = "This Year"
+    else:
+        start_date = today
+        timeframe_text = "Today"
 
-    # Execute query and process results
-    entries = query.all()
-    
-    # Calculate totals for each user
-    user_totals = {}
-    for entry in entries:
-        if entry.user_id not in user_totals:
-            user_totals[entry.user_id] = {
-                'username': entry.username,
-                'total': 0
-            }
-        if entry.value is not None:  # Handle NULL values
-            user_totals[entry.user_id]['total'] += entry.value
+    # Query to sum the metric values for each user from the start date to today
+    results = db.session.query(
+        User.id.label('user_id'),
+        User.username,
+        db.func.coalesce(db.func.sum(getattr(Entry, metric)), 0).label('total')
+    ).join(Entry, User.id == Entry.user_id)\
+     .filter(Entry.date >= start_date)\
+     .group_by(User.id, User.username)\
+     .order_by(db.text('total DESC'))\
+     .all()
 
-    # Convert to sorted list
+    # Format the leaderboard data
     leaderboard_data = [
         {
             'user_id': user_id,
-            'username': data['username'],
-            'score': round(data['total'], 2),
+            'username': username,
+            'score': round(total, 2),
             'unit': 'miles' if metric == 'running_mileage' else 
                    'hours' if metric in ['sleep_hours', 'screen_time'] else
                    'oz' if metric == 'water_intake' else ''
         }
-        for user_id, data in user_totals.items()
+        for user_id, username, total in results
     ]
-    
-    # Sort by score descending
-    leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
 
     return render_template('leaderboard.html',
                          user=current_user,
