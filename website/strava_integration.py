@@ -11,6 +11,12 @@ logger = logging.getLogger(__name__)
 
 class StravaIntegration:
     def __init__(self, client_id, client_secret):
+        if not client_id or not client_secret:
+            logger.error("Missing Strava credentials!")
+            logger.error(f"Client ID: {client_id}")
+            logger.error(f"Client Secret: {client_secret}")
+            raise ValueError("Strava client_id and client_secret are required")
+            
         logger.info(f"Initializing StravaIntegration with client_id: {client_id}")
         self.client_id = client_id
         self.client_secret = client_secret

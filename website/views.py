@@ -19,9 +19,13 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 # Add these environment variables to your configuration
 strava_integration = StravaIntegration(
-    client_id=os.getenv('STRAVA_CLIENT_ID'),
-    client_secret=os.getenv('STRAVA_CLIENT_SECRET')
+    client_id=os.environ.get('STRAVA_CLIENT_ID'),
+    client_secret=os.environ.get('STRAVA_CLIENT_SECRET')
 )
+
+# Add some logging to debug the values
+logger.info(f"Strava Client ID: {os.environ.get('STRAVA_CLIENT_ID')}")
+logger.info(f"Strava Client Secret: {os.environ.get('STRAVA_CLIENT_SECRET')}")
 
 def allowed_file(filename):
     """
@@ -719,6 +723,7 @@ def delete_custom_metric(metric_id):
 def settings():
     return render_template(
         'settings.html',
+        user=current_user,
         strava_connected=current_user.strava_access_token is not None
     )
 
