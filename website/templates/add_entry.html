@@ -40,7 +40,14 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="running_mileage" class="form-label">Running Mileage</label>
-                                    <input type="number" class="form-control" id="running_mileage" name="running_mileage" step="0.1" min="0" required>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="running_mileage" 
+                                           name="running_mileage" 
+                                           step="0.01" 
+                                           min="0" 
+                                           value="{{ entry.running_mileage if entry else 0 }}" 
+                                           required>
                                 </div>
                             </div>
                             <div class="mb-3">
