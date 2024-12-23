@@ -1,139 +1,214 @@
 {% extends "base.html" %}
 
+{% block title %}Home{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-header theme-header">
-                    <h2 class="mb-0">
-                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                    </h2>
-                </div>
-                <div class="card-body">
-                    <h3>Welcome, {{ user.username }}!</h3>
-                    
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }}">{{ message }}</div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
-
-                    <div class="row mt-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Today's Progress</h4>
-                                </div>
-                                <div class="card-body">
-                                    {% if today_entry %}
-                                        <ul class="list-group">
-                                            {% if today_entry.running_mileage > 0 %}
-                                                <li class="list-group-item">Running: {{ today_entry.running_mileage }} miles</li>
-                                            {% endif %}
-                                            {% if today_entry.calories > 0 %}
-                                                <li class="list-group-item">Calories: {{ today_entry.calories }} kcal</li>
-                                            {% endif %}
-                                            {% if today_entry.water_intake > 0 %}
-                                                <li class="list-group-item">Water: {{ today_entry.water_intake }} ml</li>
-                                            {% endif %}
-                                            {% if today_entry.sleep_hours > 0 %}
-                                                <li class="list-group-item">Sleep: {{ today_entry.sleep_hours }} hours</li>
-                                            {% endif %}
-                                            {% if today_entry.screen_time > 0 %}
-                                                <li class="list-group-item">Screen Time: {{ today_entry.screen_time }} hours</li>
-                                            {% endif %}
-                                        </ul>
-                                    {% else %}
-                                        <p>No entries for today yet.</p>
-                                        <a href="{{ url_for('views.add_entry') }}" class="btn theme-btn">Add Entry</a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Active Metrics</h4>
-                                </div>
-                                <div class="card-body">
-                                    {% if metric_preferences %}
-                                        <ul class="list-group">
-                                            {% for pref in metric_preferences %}
-                                                <li class="list-group-item">
-                                                    {% if pref.metric_type == 'default' %}
-                                                        {{ pref.metric_id }}
-                                                    {% else %}
-                                                        {{ pref.custom_metric.name }}
-                                                    {% endif %}
-                                                </li>
-                                            {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <p>No active metrics configured.</p>
-                                    {% endif %}
-                                    <a href="{{ url_for('views.metric_settings') }}" class="btn theme-btn mt-3">Configure Metrics</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mt-4">
-                        <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Quick Actions</h4>
-                                </div>
-                                <div class="card-body">
-                                    <div class="d-flex gap-2">
-                                        <a href="{{ url_for('views.add_entry') }}" class="btn theme-btn">
-                                            <i class="fas fa-plus me-2"></i>Add Entry
-                                        </a>
-                                        <a href="{{ url_for('views.view_data') }}" class="btn theme-btn">
-                                            <i class="fas fa-table me-2"></i>View Data
-                                        </a>
-                                        <a href="{{ url_for('views.view_charts') }}" class="btn theme-btn">
-                                            <i class="fas fa-chart-line me-2"></i>View Charts
-                                        </a>
-                                        <a href="{{ url_for('auth.leaderboard') }}" class="btn theme-btn">
-                                            <i class="fas fa-trophy me-2"></i>Leaderboard
-                                        </a>
-                                        <a href="{{ url_for('views.message_board') }}" class="btn theme-btn">
-                                            <i class="fas fa-comments me-2"></i>Message Board
-                                        </a>
-                                        <a href="{{ url_for('views.posts') }}" class="btn theme-btn">
-                                            <i class="fas fa-stream me-2"></i>Community Feed
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <div class="text-center mb-4 welcome-section">
+        <h1 class="welcome-title">Welcome, {{ user.username }}</h1>
+        <p class="welcome-subtitle">Track your progress, compete against friends, and share your journey!</p>
+    </div>
+    <div class="row g-4 justify-content-center">
+        <div class="col-sm-6 col-lg-4">
+            <a href="/add_entry" class="card-link">
+                <div class="card feature-card green-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-plus-circle feature-icon"></i>
+                        <h3 class="card-title mt-2">Add Entry</h3>
+                        <p class="card-text">Record your daily health and fitness data</p>
                     </div>
                 </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/view_data" class="card-link">
+                <div class="card feature-card blue-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-table feature-icon"></i>
+                        <h3 class="card-title mt-2">View Data</h3>
+                        <p class="card-text">See your health tracking history</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/view_charts" class="card-link">
+                <div class="card feature-card purple-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-chart-bar feature-icon"></i>
+                        <h3 class="card-title mt-2">Charts</h3>
+                        <p class="card-text">Visualize your progress over time</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="{{ url_for('auth.leaderboard') }}" class="card-link">
+                <div class="card feature-card gold-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-trophy feature-icon"></i>
+                        <h3 class="card-title mt-2">Leaderboard</h3>
+                        <p class="card-text">Compare your progress with others</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/message_board" class="card-link">
+                <div class="card feature-card orange-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-comments feature-icon"></i>
+                        <h3 class="card-title mt-2">Messages</h3>
+                        <p class="card-text">Chat with other community members</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-4">
+            <a href="/posts" class="card-link">
+                <div class="card feature-card rose-card">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-stream feature-icon"></i>
+                        <h3 class="card-title mt-2">Feed</h3>
+                        <p class="card-text">Share and view community posts</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    {% if not user.is_authenticated %}
+    <div class="row mt-4">
+        <div class="col-md-8 mx-auto text-center">
+            <h1 class="display-4">Welcome to Health Tracker</h1>
+            <p class="lead">Please log in or sign up to start tracking your health metrics.</p>
+            <div class="mt-4">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary me-2">Login</a>
+                <a href="{{ url_for('auth.sign_up') }}" class="btn btn-success">Sign Up</a>
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <style>
-    .theme-header {
-        background-color: #dc3545;
-        color: white;
+    .welcome-section {
+        margin-bottom: 2.5rem;
     }
 
-    .theme-btn {
-        background-color: #dc3545;
-        color: white;
+    .welcome-title {
+        font-weight: 600;
+        font-size: 2.2rem;
+        color: #2C3E50;
+        margin-bottom: 0.75rem;
+    }
+
+    .welcome-subtitle {
+        font-size: 1.1rem;
+        color: #666;
+        font-weight: 500;
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+
+    .welcome-card {
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .welcome-card h1 {
+        color: #333;
+        font-weight: 600;
+    }
+
+    .welcome-card .lead {
+        color: #666;
+    }
+
+    .card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .feature-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
         border: none;
-        transition: all 0.2s ease;
+        border-radius: 1rem;
+        overflow: hidden;
+        height: 100%;
     }
 
-    .theme-btn:hover {
-        background-color: #c82333;
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .feature-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .card-title {
+        font-weight: 600;
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .card-text {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    /* Color schemes for each card */
+    .green-card {
+        background-color: #4CAF50;
         color: white;
+    }
+    .green-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .blue-card {
+        background-color: #2196F3;
+        color: white;
+    }
+    .blue-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .purple-card {
+        background-color: #9C27B0;
+        color: white;
+    }
+    .purple-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .gold-card {
+        background-color: #FFC107;
+        color: white;
+    }
+    .gold-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .orange-card {
+        background-color: #FF9F45;
+        color: white;
+    }
+    .orange-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .rose-card {
+        background-color: #E91E63;
+        color: white;
+    }
+    .rose-card .card-text {
+        color: rgba(255,255,255,0.9);
     }
 </style>
 {% endblock %}
