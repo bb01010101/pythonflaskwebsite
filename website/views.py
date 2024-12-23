@@ -765,10 +765,20 @@ def strava_callback():
         token_response = strava_integration.exchange_code_for_token(code)
         logger.info(f"Received token response: {token_response}")
         
-        current_user.strava_access_token = token_response['access_token']
-        current_user.strava_refresh_token = token_response['refresh_token']
-        current_user.strava_token_expires_at = datetime.datetime.fromtimestamp(token_response['expires_at'])
-        current_user.strava_athlete_id = str(token_response['athlete'].id)
+        # Store the token response values
+        current_user.strava_access_token = token_response.get('access_token')
+        current_user.strava_refresh_token = token_response.get('refresh_token')
+        current_user.strava_token_expires_at = datetime.datetime.fromtimestamp(token_response.get('expires_at', 0))
+        
+        # Get athlete ID safely
+        athlete = token_response.get('athlete', {})
+        athlete_id = athlete.get('id') if isinstance(athlete, dict) else None
+        
+        if athlete_id:
+            current_user.strava_athlete_id = str(athlete_id)
+        else:
+            logger.warning("No athlete ID found in token response")
+            current_user.strava_athlete_id = None
         
         logger.info("Saving tokens to database...")
         db.session.commit()
@@ -784,6 +794,7 @@ def strava_callback():
         return redirect(url_for('views.settings'))
     except Exception as e:
         logger.error(f"Error in Strava callback: {str(e)}", exc_info=True)
+        logger.error(f"Token response: {token_response}")  # Add this for debugging
         flash(f'Error connecting to Strava: {str(e)}', 'error')
         return redirect(url_for('views.settings'))
 

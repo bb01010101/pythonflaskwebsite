@@ -39,6 +39,19 @@ class StravaIntegration:
                 code=code
             )
             logger.info("Successfully exchanged code for token")
+            
+            # Convert token response to dictionary if it isn't already
+            if not isinstance(token_response, dict):
+                token_response = {
+                    'access_token': token_response.access_token,
+                    'refresh_token': token_response.refresh_token,
+                    'expires_at': token_response.expires_at,
+                    'athlete': {
+                        'id': token_response.athlete.id if hasattr(token_response, 'athlete') else None
+                    }
+                }
+            
+            logger.info(f"Processed token response: {token_response}")
             return token_response
         except Exception as e:
             logger.error(f"Error exchanging code for token: {str(e)}", exc_info=True)
