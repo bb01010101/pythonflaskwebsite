@@ -878,13 +878,12 @@ def leaderboard():
         query = query.filter(Entry.date >= week_start)
         timeframe_text = "This Week"
     elif timeframe == 'month':
-        query = query.filter(
-            db.extract('year', Entry.date) == today.year,
-            db.extract('month', Entry.date) == today.month
-        )
+        month_start = today.replace(day=1)
+        query = query.filter(Entry.date >= month_start)
         timeframe_text = "This Month"
     elif timeframe == 'year':
-        query = query.filter(db.extract('year', Entry.date) == today.year)
+        year_start = today.replace(month=1, day=1)
+        query = query.filter(Entry.date >= year_start)
         timeframe_text = "This Year"
 
     # Execute query and process results
@@ -898,7 +897,8 @@ def leaderboard():
                 'username': entry.username,
                 'total': 0
             }
-        user_totals[entry.user_id]['total'] += entry.value if entry.value else 0
+        if entry.value is not None:  # Handle NULL values
+            user_totals[entry.user_id]['total'] += entry.value
 
     # Convert to sorted list
     leaderboard_data = [
@@ -916,13 +916,9 @@ def leaderboard():
     # Sort by score descending
     leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
 
-    # Get custom metrics for the dropdown
-    custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
-
     return render_template('leaderboard.html',
                          user=current_user,
                          leaderboard=leaderboard_data,
                          selected_metric=metric,
-                         selected_timeframe=timeframe_text,
-                         custom_metrics=custom_metrics)
+                         selected_timeframe=timeframe_text)
 
