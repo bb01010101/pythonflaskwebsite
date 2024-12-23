@@ -20,8 +20,10 @@ def create_app():
     if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or 'postgresql://postgres:postgres@localhost:5432/healthtracker'
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    print(f"Using database URL: {DATABASE_URL}")  # Debug log
     
     db.init_app(app)
     migrate = Migrate(app, db)
@@ -36,7 +38,11 @@ def create_app():
     from .models import User, Entry, Message
 
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+            print("Database tables created successfully")  # Debug log
+        except Exception as e:
+            print(f"Error creating database tables: {str(e)}")  # Debug log
 
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'

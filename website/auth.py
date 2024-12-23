@@ -79,113 +79,91 @@ def sign_up():
 @auth.route('/leaderboard')
 @login_required
 def leaderboard():
-    metric = request.args.get('metric', 'running_mileage')
-    timeframe = request.args.get('timeframe', 'day')
-    
-    # Calculate the date range based on timeframe
-    today = datetime.now().date()
-    if timeframe == 'day':
-        start_date = today
-        end_date = today
-        timeframe_display = 'Today'
-    elif timeframe == 'week':
-        start_date = today - timedelta(days=today.weekday())  # Monday
-        end_date = start_date + timedelta(days=6)  # Sunday
-        timeframe_display = 'This Week'
-    elif timeframe == 'month':
-        start_date = today.replace(day=1)
-        if today.month == 12:
-            end_date = today.replace(day=31)
-        else:
-            end_date = (today.replace(day=1, month=today.month + 1) - timedelta(days=1))
-        timeframe_display = 'This Month'
-    elif timeframe == 'year':
-        start_date = today.replace(month=1, day=1)
-        end_date = today.replace(month=12, day=31)
-        timeframe_display = 'This Year'
-    
-    # Define metric mappings for default metrics
-    metric_columns = {
-        'running_mileage': Entry.running_mileage,
-        'calories': Entry.calories,
-        'water': Entry.water_intake,
-        'sleep': Entry.sleep_hours,
-        'screen_time': Entry.screen_time
-    }
-    
-    metric_units = {
-        'running_mileage': 'miles',
-        'calories': 'kcal',
-        'water': 'ml',
-        'sleep': 'hours',
-        'screen_time': 'hours'
-    }
+    try:
+        metric = request.args.get('metric', 'running_mileage')
+        timeframe = request.args.get('timeframe', 'day')
+        
+        # Calculate the date range based on timeframe
+        today = datetime.now().date()
+        if timeframe == 'day':
+            start_date = today
+            end_date = today
+            timeframe_display = 'Today'
+        elif timeframe == 'week':
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
+            timeframe_display = 'This Week'
+        elif timeframe == 'month':
+            start_date = today.replace(day=1)
+            if today.month == 12:
+                end_date = today.replace(day=31)
+            else:
+                end_date = (today.replace(day=1, month=today.month + 1) - timedelta(days=1))
+            timeframe_display = 'This Month'
+        else:  # year
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
+            timeframe_display = 'This Year'
 
-    # Check if metric is a custom metric
-    custom_metric = None
-    if metric.startswith('custom_'):
-        try:
-            custom_metric_id = int(metric.split('_')[1])
-            custom_metric = CustomMetric.query.get(custom_metric_id)
-        except (IndexError, ValueError):
-            pass
+        print(f"Date range: {start_date} to {end_date}")  # Debug log
+        
+        # Define metric mappings
+        metric_columns = {
+            'running_mileage': Entry.running_mileage,
+            'calories': Entry.calories,
+            'water': Entry.water_intake,
+            'sleep': Entry.sleep_hours,
+            'screen_time': Entry.screen_time
+        }
+        
+        metric_units = {
+            'running_mileage': 'miles',
+            'calories': 'kcal',
+            'water': 'ml',
+            'sleep': 'hours',
+            'screen_time': 'hours'
+        }
 
-    if custom_metric:
-        # Query for custom metric
+        # Basic query for default metrics
         query = db.session.query(
             User.id.label('user_id'),
             User.username.label('username'),
-            func.sum(CustomMetricEntry.value).label('score')
-        ).join(Entry).join(CustomMetricEntry).filter(
-            CustomMetricEntry.metric_id == custom_metric_id,
+            func.coalesce(func.sum(metric_columns[metric]), 0).label('score')
+        ).join(
+            Entry, User.id == Entry.user_id
+        ).filter(
             Entry.date >= start_date,
             Entry.date <= end_date
         ).group_by(User.id, User.username)
 
-        # Sort based on is_higher_better flag
-        if custom_metric.is_higher_better:
-            query = query.order_by(func.sum(CustomMetricEntry.value).desc())
-        else:
-            query = query.order_by(func.sum(CustomMetricEntry.value).asc())
+        print(f"Generated SQL query: {query}")  # Debug log
 
-        metric_unit = custom_metric.unit
-    else:
-        # Query for default metric
-        query = db.session.query(
-            User.id.label('user_id'),
-            User.username.label('username'),
-            func.sum(metric_columns[metric]).label('score')
-        ).join(Entry).filter(
-            Entry.date >= start_date,
-            Entry.date <= end_date
-        ).group_by(User.id, User.username)
-
-        # For screen time, sort ascending (less is better)
+        # Sort based on metric type
         if metric == 'screen_time':
             query = query.order_by(func.sum(metric_columns[metric]).asc())
         else:
             query = query.order_by(func.sum(metric_columns[metric]).desc())
 
-        metric_unit = metric_units[metric]
-    
-    leaderboard_data = query.all()
-    
-    # Format the data for template
-    leaderboard = [{
-        'user_id': entry.user_id,
-        'username': entry.username,
-        'score': round(entry.score if entry.score else 0, 2),
-        'unit': metric_unit
-    } for entry in leaderboard_data]
+        leaderboard_data = query.all()
+        print(f"Query returned {len(leaderboard_data)} results")  # Debug log
 
-    # Get list of custom metrics for the dropdown
-    custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
-    
-    return render_template('leaderboard.html', 
-                         leaderboard=leaderboard,
-                         current_user=current_user,
-                         user=current_user,
-                         selected_timeframe=timeframe_display,
-                         selected_metric=metric,
-                         custom_metrics=custom_metrics,
-                         request=request)
+        # Format the data for template
+        leaderboard = [{
+            'user_id': entry.user_id,
+            'username': entry.username,
+            'score': round(entry.score if entry.score else 0, 2),
+            'unit': metric_units[metric]
+        } for entry in leaderboard_data]
+
+        return render_template('leaderboard.html',
+                             leaderboard=leaderboard,
+                             current_user=current_user,
+                             user=current_user,
+                             selected_timeframe=timeframe_display,
+                             selected_metric=metric,
+                             request=request)
+                             
+    except Exception as e:
+        print(f"Error in leaderboard route: {str(e)}")  # Debug log
+        flash('Error loading leaderboard. Please try again.', category='error')
+        return redirect(url_for('views.home'))
