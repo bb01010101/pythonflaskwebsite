@@ -127,23 +127,30 @@ def leaderboard():
         # Get the actual database column name
         db_column = metric_mapping[metric]
 
-        # Query to get aggregated data for the leaderboard
+        # Subquery to get the sum of metrics for each user within the date range
+        subquery = db.session.query(
+            Entry.user_id,
+            func.sum(getattr(Entry, db_column)).label('total')
+        ).filter(
+            Entry.date >= start_date,
+            Entry.date <= end_date
+        ).group_by(Entry.user_id).subquery()
+
+        # Main query to get all users and their scores
         query = db.session.query(
             User.id.label('user_id'),
             User.username.label('username'),
-            func.coalesce(func.sum(getattr(Entry, db_column)), 0).label('score')
-        ).join(
-            Entry, User.id == Entry.user_id, isouter=True
-        ).filter(
-            (Entry.date >= start_date) | (Entry.date.is_(None)),
-            (Entry.date <= end_date) | (Entry.date.is_(None))
-        ).group_by(User.id, User.username)
+            func.coalesce(subquery.c.total, 0).label('score')
+        ).outerjoin(
+            subquery,
+            User.id == subquery.c.user_id
+        )
 
         # Sort based on metric type
         if metric == 'screen_time':
-            query = query.order_by(func.sum(getattr(Entry, db_column)).asc())
+            query = query.order_by(func.coalesce(subquery.c.total, 0).asc())
         else:
-            query = query.order_by(func.sum(getattr(Entry, db_column)).desc())
+            query = query.order_by(func.coalesce(subquery.c.total, 0).desc())
 
         leaderboard_data = query.all()
         print(f"Query returned {len(leaderboard_data)} results")  # Debug log
