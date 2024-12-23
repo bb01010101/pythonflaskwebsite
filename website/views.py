@@ -860,75 +860,77 @@ def leaderboard():
     
     today = datetime.date.today()
     
-    # Debug print statements
-    print(f"\nDEBUG: Leaderboard Request")
-    print(f"Metric: {metric}")
-    print(f"Timeframe: {timeframe}")
-    print(f"Today's date: {today}")
+    # Calculate date ranges based on timeframe
+    if timeframe == 'day':
+        start_date = today
+        end_date = today
+    elif timeframe == 'week':
+        start_date = today - datetime.timedelta(days=today.weekday())
+        end_date = today
+    elif timeframe == 'month':
+        start_date = today.replace(day=1)
+        end_date = today
+    else:  # year
+        start_date = today.replace(month=1, day=1)
+        end_date = today
 
-    # Get entries from both Entry and Activity tables
+    # Get entries from both Entry and Activity tables with date filtering
     if metric == 'running_mileage':
-        # For running mileage, combine manual entries and Strava activities
+        # Manual entries within date range
         entries = db.session.query(
             User.id.label('user_id'),
             User.username,
-            Entry.date,
-            db.func.coalesce(Entry.running_mileage, 0).label('value')
-        ).join(Entry, User.id == Entry.user_id)
+            db.func.sum(Entry.running_mileage).label('value')
+        ).join(Entry, User.id == Entry.user_id)\
+         .filter(Entry.date.between(start_date, end_date))\
+         .group_by(User.id, User.username)
 
+        # Strava activities within date range
         activities = db.session.query(
             User.id.label('user_id'),
             User.username,
-            Activity.date,
-            (Activity.distance * 0.000621371).label('value')  # Convert meters to miles
-        ).join(Activity, User.id == Activity.user_id)
+            db.func.sum(Activity.distance * 0.000621371).label('value')  # Convert meters to miles
+        ).join(Activity, User.id == Activity.user_id)\
+         .filter(Activity.date.between(start_date, end_date))\
+         .group_by(User.id, User.username)
 
-        # Union the queries
-        combined_entries = entries.union(activities).all()
+        # Combine results
+        results = []
+        entries_dict = {(e.user_id, e.username): e.value or 0 for e in entries.all()}
+        activities_dict = {(a.user_id, a.username): a.value or 0 for a in activities.all()}
+        
+        # Merge the dictionaries
+        all_users = set(entries_dict.keys()) | set(activities_dict.keys())
+        for user_id, username in all_users:
+            total = (entries_dict.get((user_id, username), 0) + 
+                    activities_dict.get((user_id, username), 0))
+            results.append({
+                'user_id': user_id,
+                'username': username,
+                'value': total
+            })
     else:
         # For other metrics, just use Entry table
-        combined_entries = db.session.query(
+        results = db.session.query(
             User.id.label('user_id'),
             User.username,
-            Entry.date,
-            getattr(Entry, metric).label('value')
-        ).join(Entry, User.id == Entry.user_id).all()
+            db.func.sum(getattr(Entry, metric)).label('value')
+        ).join(Entry, User.id == Entry.user_id)\
+         .filter(Entry.date.between(start_date, end_date))\
+         .group_by(User.id, User.username)\
+         .all()
 
-    # Filter entries based on timeframe
-    filtered_entries = []
-    for entry in combined_entries:
-        entry_date = entry.date.date() if isinstance(entry.date, datetime.datetime) else entry.date
-        if timeframe == 'day' and entry_date == today:
-            filtered_entries.append(entry)
-        elif timeframe == 'week' and entry_date >= (today - datetime.timedelta(days=today.weekday())):
-            filtered_entries.append(entry)
-        elif timeframe == 'month' and entry_date.year == today.year and entry_date.month == today.month:
-            filtered_entries.append(entry)
-        elif timeframe == 'year' and entry_date.year == today.year:
-            filtered_entries.append(entry)
-
-    # Calculate totals for each user
-    user_totals = {}
-    for entry in filtered_entries:
-        if entry.user_id not in user_totals:
-            user_totals[entry.user_id] = {
-                'username': entry.username,
-                'total': 0
-            }
-        if entry.value is not None:
-            user_totals[entry.user_id]['total'] += entry.value
-
-    # Convert to sorted list
+    # Convert to leaderboard format
     leaderboard_data = [
         {
-            'user_id': user_id,
-            'username': data['username'],
-            'score': round(data['total'], 2),
+            'user_id': r['user_id'] if isinstance(r, dict) else r.user_id,
+            'username': r['username'] if isinstance(r, dict) else r.username,
+            'score': round(float(r['value'] if isinstance(r, dict) else r.value or 0), 2),
             'unit': 'miles' if metric == 'running_mileage' else 
                    'hours' if metric in ['sleep_hours', 'screen_time'] else
                    'oz' if metric == 'water_intake' else ''
         }
-        for user_id, data in user_totals.items()
+        for r in results
     ]
     
     # Sort by score descending
