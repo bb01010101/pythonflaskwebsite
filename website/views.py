@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
 from flask_login import login_required, current_user
-from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry
+from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity
 from . import db
 import json
 import datetime
@@ -865,38 +865,48 @@ def leaderboard():
     print(f"Metric: {metric}")
     print(f"Timeframe: {timeframe}")
     print(f"Today's date: {today}")
-    
-    # Get all entries and print them for debugging
-    all_entries = Entry.query.all()
-    print("\nAll entries in database:")
-    for entry in all_entries:
-        print(f"User: {entry.user_id}, Date: {entry.date}, {metric}: {getattr(entry, metric)}")
-    
-    # Get filtered entries
-    entries = Entry.query.join(User).with_entities(
-        Entry.date,
-        Entry.user_id,
-        User.username,
-        getattr(Entry, metric)
-    ).all()
-    
-    # Print filtered entries before processing
-    print("\nFiltered entries before timeframe filter:")
-    for entry in entries:
-        print(f"User: {entry.user_id}, Date: {entry.date}, {metric}: {getattr(entry, metric)}")
-    
+
+    # Get entries from both Entry and Activity tables
+    if metric == 'running_mileage':
+        # For running mileage, combine manual entries and Strava activities
+        entries = db.session.query(
+            User.id.label('user_id'),
+            User.username,
+            Entry.date,
+            db.func.coalesce(Entry.running_mileage, 0).label('value')
+        ).join(Entry, User.id == Entry.user_id)
+
+        activities = db.session.query(
+            User.id.label('user_id'),
+            User.username,
+            Activity.date,
+            (Activity.distance * 0.000621371).label('value')  # Convert meters to miles
+        ).join(Activity, User.id == Activity.user_id)
+
+        # Union the queries
+        combined_entries = entries.union(activities).all()
+    else:
+        # For other metrics, just use Entry table
+        combined_entries = db.session.query(
+            User.id.label('user_id'),
+            User.username,
+            Entry.date,
+            getattr(Entry, metric).label('value')
+        ).join(Entry, User.id == Entry.user_id).all()
+
     # Filter entries based on timeframe
     filtered_entries = []
-    for entry in entries:
-        if timeframe == 'day' and entry.date == today:
+    for entry in combined_entries:
+        entry_date = entry.date.date() if isinstance(entry.date, datetime.datetime) else entry.date
+        if timeframe == 'day' and entry_date == today:
             filtered_entries.append(entry)
-        elif timeframe == 'week' and entry.date >= (today - datetime.timedelta(days=today.weekday())):
+        elif timeframe == 'week' and entry_date >= (today - datetime.timedelta(days=today.weekday())):
             filtered_entries.append(entry)
-        elif timeframe == 'month' and entry.date.year == today.year and entry.date.month == today.month:
+        elif timeframe == 'month' and entry_date.year == today.year and entry_date.month == today.month:
             filtered_entries.append(entry)
-        elif timeframe == 'year' and entry.date.year == today.year:
+        elif timeframe == 'year' and entry_date.year == today.year:
             filtered_entries.append(entry)
-    
+
     # Calculate totals for each user
     user_totals = {}
     for entry in filtered_entries:
@@ -905,9 +915,9 @@ def leaderboard():
                 'username': entry.username,
                 'total': 0
             }
-        if getattr(entry, metric) is not None:  # Skip None values
-            user_totals[entry.user_id]['total'] += getattr(entry, metric)
-    
+        if entry.value is not None:
+            user_totals[entry.user_id]['total'] += entry.value
+
     # Convert to sorted list
     leaderboard_data = [
         {
