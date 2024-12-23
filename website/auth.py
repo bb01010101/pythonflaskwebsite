@@ -103,13 +103,27 @@ def leaderboard():
         # Get the actual database column name
         db_column = metric_mapping[metric]
 
-        # Query to get all users with their total metric values
+        # Determine the date range based on the selected timeframe
+        today = datetime.date.today()
+        if timeframe == 'day':
+            start_date = today
+        elif timeframe == 'week':
+            start_date = today - datetime.timedelta(days=today.weekday())
+        elif timeframe == 'month':
+            start_date = today.replace(day=1)
+        else:  # year
+            start_date = today.replace(month=1, day=1)
+
+        # Query to get all users with their total metric values for the specified timeframe
         query = db.session.query(
             User.id,
             User.username,
             func.coalesce(func.sum(getattr(Entry, db_column)), 0).label('total')
         ).outerjoin(
             Entry, User.id == Entry.user_id
+        ).filter(
+            Entry.date >= start_date,
+            Entry.date <= today
         ).group_by(User.id, User.username)
 
         # Sort based on metric type
@@ -119,13 +133,11 @@ def leaderboard():
             query = query.order_by(func.coalesce(func.sum(getattr(Entry, db_column)), 0).desc())
 
         results = query.all()
-        print(f"Query returned {len(results)} results")
 
         # Create leaderboard data
         leaderboard = []
         for result in results:
             score = float(result.total) if result.total is not None else 0
-            print(f"User {result.username}: {score} {metric_units[metric]}")  # Debug print
             leaderboard.append({
                 'user_id': result.id,
                 'username': result.username,
@@ -134,16 +146,11 @@ def leaderboard():
             })
 
         return render_template('leaderboard.html',
-                             leaderboard=leaderboard,
-                             current_user=current_user,
-                             user=current_user,
-                             selected_timeframe=timeframe,
-                             selected_metric=metric,
-                             request=request)
-                             
+                               leaderboard=leaderboard,
+                               current_user=current_user,
+                               selected_timeframe=timeframe,
+                               selected_metric=metric)
+
     except Exception as e:
-        print(f"Error in leaderboard route: {str(e)}")
-        import traceback
-        traceback.print_exc()
         flash('Error loading leaderboard. Please try again.', category='error')
         return redirect(url_for('views.home'))
