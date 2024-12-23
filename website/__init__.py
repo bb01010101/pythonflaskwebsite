@@ -57,7 +57,7 @@ def create_app():
         raise
 
     try:
-        from .models import User, Entry, Message, Post, Like, Comment, CustomMetric, MetricPreference, CustomMetricEntry
+        from .models import User, Entry, Message, Post, Like, Comment, CustomMetric, MetricPreference, CustomMetricEntry, Activity
     except Exception as e:
         logger.error(f"Error importing models: {str(e)}", exc_info=True)
         raise

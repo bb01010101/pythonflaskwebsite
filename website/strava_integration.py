@@ -5,14 +5,19 @@ from flask import current_app
 from . import db
 from .models import User, Activity
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 class StravaIntegration:
     def __init__(self, client_id, client_secret):
+        logger.info(f"Initializing StravaIntegration with client_id: {client_id}")
         self.client_id = client_id
         self.client_secret = client_secret
         self.client = Client()
 
     def get_auth_url(self, redirect_uri):
+        logger.info(f"Generating auth URL with redirect_uri: {redirect_uri}")
         return self.client.authorization_url(
             client_id=self.client_id,
             redirect_uri=redirect_uri,
@@ -20,12 +25,18 @@ class StravaIntegration:
         )
 
     def exchange_code_for_token(self, code):
-        token_response = self.client.exchange_code_for_token(
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            code=code
-        )
-        return token_response
+        logger.info("Exchanging code for token")
+        try:
+            token_response = self.client.exchange_code_for_token(
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                code=code
+            )
+            logger.info("Successfully exchanged code for token")
+            return token_response
+        except Exception as e:
+            logger.error(f"Error exchanging code for token: {str(e)}", exc_info=True)
+            raise
 
     def sync_activities(self, user):
         try:

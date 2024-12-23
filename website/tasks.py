@@ -1,6 +1,10 @@
 from flask import current_app
 from .models import User
 from datetime import datetime, timedelta
+from .strava_integration import StravaIntegration
+
+# Get strava_integration instance from views
+from .views import strava_integration
 
 def sync_strava_activities():
     with current_app.app_context():

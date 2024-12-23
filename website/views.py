@@ -732,21 +732,30 @@ def strava_auth():
 @views.route('/strava/callback')
 @login_required
 def strava_callback():
-    code = request.args.get('code')
-    token_response = strava_integration.exchange_code_for_token(code)
-    
-    current_user.strava_access_token = token_response['access_token']
-    current_user.strava_refresh_token = token_response['refresh_token']
-    current_user.strava_token_expires_at = datetime.fromtimestamp(token_response['expires_at'])
-    current_user.strava_athlete_id = str(token_response['athlete'].id)
-    
-    db.session.commit()
-    
-    # Sync the last two weeks of activities
-    strava_integration.sync_activities(current_user)
-    
-    flash('Successfully connected to Strava!', 'success')
-    return redirect(url_for('views.settings'))
+    try:
+        code = request.args.get('code')
+        if not code:
+            flash('Authorization failed: No code received from Strava', 'error')
+            return redirect(url_for('views.settings'))
+            
+        token_response = strava_integration.exchange_code_for_token(code)
+        
+        current_user.strava_access_token = token_response['access_token']
+        current_user.strava_refresh_token = token_response['refresh_token']
+        current_user.strava_token_expires_at = datetime.fromtimestamp(token_response['expires_at'])
+        current_user.strava_athlete_id = str(token_response['athlete'].id)
+        
+        db.session.commit()
+        
+        # Sync the last two weeks of activities
+        strava_integration.sync_activities(current_user)
+        
+        flash('Successfully connected to Strava!', 'success')
+        return redirect(url_for('views.settings'))
+    except Exception as e:
+        logger.error(f"Error in Strava callback: {str(e)}", exc_info=True)
+        flash(f'Error connecting to Strava: {str(e)}', 'error')
+        return redirect(url_for('views.settings'))
 
 @views.route('/strava/disconnect')
 @login_required
