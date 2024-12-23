@@ -64,14 +64,12 @@ class StravaIntegration:
             
             activities = self.client.get_activities(after=two_weeks_ago)
             
+            # Create a dictionary to accumulate daily mileage
+            daily_mileage = {}
+            
+            # First, accumulate all mileage for each day
             for activity in activities:
-                # Check if activity already exists
-                existing_activity = Activity.query.filter_by(
-                    strava_id=str(activity.id)
-                ).first()
-                
-                if not existing_activity:
-                    # Handle distance conversion
+                if activity.type == 'Run':  # Only process running activities
                     try:
                         if hasattr(activity.distance, 'meters'):
                             distance = float(activity.distance.meters)
@@ -85,48 +83,46 @@ class StravaIntegration:
 
                     # Convert meters to miles
                     distance_miles = distance * 0.000621371
-
+                    
                     # Get the activity date
                     activity_date = activity.start_date.date()
-
-                    # Find or create an Entry for this date
-                    entry = Entry.query.filter_by(
-                        user_id=user.id,
-                        date=activity_date
-                    ).first()
-
-                    if entry:
-                        # Update existing entry's running mileage
-                        entry.running_mileage = entry.running_mileage + distance_miles
-                        logger.info(f"Updated entry for {activity_date} with additional {distance_miles} miles")
+                    
+                    # Add mileage to daily total
+                    if activity_date in daily_mileage:
+                        daily_mileage[activity_date] += distance_miles
                     else:
-                        # Create new entry
-                        entry = Entry(
-                            user_id=user.id,
-                            date=activity_date,
-                            running_mileage=distance_miles,
-                            sleep_hours=0,
-                            calories=0,
-                            water_intake=0,
-                            screen_time=0
-                        )
-                        db.session.add(entry)
-                        logger.info(f"Created new entry for {activity_date} with {distance_miles} miles")
-
-                    # Still create the Activity record
-                    new_activity = Activity(
-                        user_id=user.id,
-                        strava_id=str(activity.id),
-                        activity_type=activity.type,
-                        distance=distance,
-                        duration=float(activity.moving_time.total_seconds()),
-                        date=activity.start_date,
-                        calories=activity.calories if hasattr(activity, 'calories') else 0
-                    )
-                    db.session.add(new_activity)
-                    logger.info(f"Adding new activity: {activity.type} - {distance}m on {activity.start_date}")
+                        daily_mileage[activity_date] = distance_miles
             
+            # Now update or create entries for each day
+            for date, mileage in daily_mileage.items():
+                # Find existing entry for this date
+                entry = Entry.query.filter_by(
+                    user_id=user.id,
+                    date=date
+                ).first()
+
+                if entry:
+                    # Update existing entry's running mileage while preserving other fields
+                    logger.info(f"Updating entry for {date} with {mileage} miles")
+                    entry.running_mileage = mileage  # Set the total mileage for the day
+                else:
+                    # Create new entry with default values for other fields
+                    logger.info(f"Creating new entry for {date} with {mileage} miles")
+                    entry = Entry(
+                        user_id=user.id,
+                        date=date,
+                        running_mileage=mileage,
+                        sleep_hours=0,
+                        calories=0,
+                        water_intake=0,
+                        screen_time=0,
+                        notes="Auto-created from Strava sync"
+                    )
+                    db.session.add(entry)
+
+            # Commit all changes
             db.session.commit()
+            logger.info(f"Successfully synced running data for {len(daily_mileage)} days")
             return True
             
         except AccessUnauthorized:

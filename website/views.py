@@ -197,10 +197,10 @@ def view_charts():
 @login_required
 def view_data():
     entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.date.desc()).all()
-    print(f"Found {len(entries)} entries for user {current_user.id}")  # Debug print
+    logger.info(f"Found {len(entries)} entries for user {current_user.id}")
     for entry in entries:
-        print(f"Entry {entry.id}: date={entry.date}, sleep={entry.sleep_hours}, calories={entry.calories}, water={entry.water_intake}, miles={entry.running_mileage}")  # Debug print
-    return render_template("view_data.html", user=current_user, entries=entries, chart_data=True)
+        logger.info(f"Entry {entry.id}: date={entry.date}, miles={entry.running_mileage}")
+    return render_template("view_data.html", user=current_user, entries=entries)
 
 @views.route('/add_entry', methods=['GET', 'POST'])
 @login_required
@@ -832,4 +832,23 @@ def strava_sync():
         flash('Error syncing activities. Please try again.', 'error')
         
     return redirect(url_for('views.settings'))
+
+@views.route('/test_strava_data')
+@login_required
+def test_strava_data():
+    entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.date.desc()).all()
+    data = {
+        'entries': [
+            {
+                'date': entry.date.strftime('%Y-%m-%d'),
+                'running_mileage': entry.running_mileage,
+                'sleep_hours': entry.sleep_hours,
+                'calories': entry.calories,
+                'water_intake': entry.water_intake,
+                'screen_time': entry.screen_time
+            }
+            for entry in entries
+        ]
+    }
+    return jsonify(data)
 
