@@ -3,17 +3,16 @@ from flask_sqlalchemy import SQLAlchemy
 from os import path
 from flask_login import LoginManager
 from flask_migrate import Migrate
-from flask_socketio import SocketIO
 import datetime
 import os
 import logging
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
-socketio = SocketIO(async_mode='gevent')
 
 def create_app():
     app = Flask(__name__)
@@ -40,7 +39,6 @@ def create_app():
     try:
         db.init_app(app)
         migrate = Migrate(app, db)
-        socketio.init_app(app, cors_allowed_origins="*", async_mode='gevent')
         logger.info("Successfully initialized database and extensions")
     except Exception as e:
         logger.error(f"Error initializing extensions: {str(e)}", exc_info=True)

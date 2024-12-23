@@ -1,22 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
 from flask_login import login_required, current_user
-from flask_sqlalchemy import SQLAlchemy
 from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry
-from . import db, socketio
+from . import db
 import json
 import datetime
-from flask_socketio import emit
 import os
 from werkzeug.utils import secure_filename
 import io
-import psycopg2
-from sqlalchemy import LargeBinary
 
 views = Blueprint('views', __name__)
 
 #Configure image handling for database storage
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
 
 def allowed_file(filename):
     """
@@ -24,15 +19,6 @@ def allowed_file(filename):
     Returns True if the file extension is in ALLOWED_EXTENSIONS
     """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Update Post model to use binary storage
-class Post(db.Model):
-    __tablename__ = 'post'
-    __table_args__ = {'extend_existing': True}  # Allow redefining the table
-
-    # ... (keep existing fields)
-    image_data = db.Column(LargeBinary)  # Add this field for binary image storage
-    image_filename = db.Column(db.String(255))  # Add this to store original filename
 
 def fix_timestamp(timestamp):
     """

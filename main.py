@@ -1,9 +1,7 @@
-from website import create_app, db, socketio
+from website import create_app, db
 from flask_migrate import Migrate
 import os
 import logging
-from gevent import monkey
-monkey.patch_all()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +22,7 @@ def handle_exception(e):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 
     
