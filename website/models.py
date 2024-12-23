@@ -71,9 +71,10 @@ class Post(db.Model):
     image_path = db.Column(db.String(500))
     timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    image_data = db.Column(db.LargeBinary)
+    image_filename = db.Column(db.String(255))
     likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
-    image_data = db.Column(LargeBinary)  # Add this field for binary image storage
-    image_filename = db.Column(db.String(255))  # Add this to store original filename
+    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
 
     def like_count(self):
         return len(self.likes)
