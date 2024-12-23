@@ -861,33 +861,40 @@ def leaderboard():
     # Get current date info
     today = datetime.date.today()
     
-    # Determine the start date based on the timeframe
-    if timeframe == 'day':
-        start_date = today
-        timeframe_text = "Today"
-    elif timeframe == 'week':
-        start_date = today - datetime.timedelta(days=today.weekday())
-        timeframe_text = "This Week"
-    elif timeframe == 'month':
-        start_date = today.replace(day=1)
-        timeframe_text = "This Month"
-    elif timeframe == 'year':
-        start_date = today.replace(month=1, day=1)
-        timeframe_text = "This Year"
-    else:
-        start_date = today
-        timeframe_text = "Today"
-
-    # Query to sum the metric values for each user from the start date to today
-    results = db.session.query(
+    # Build the query
+    query = db.session.query(
         User.id.label('user_id'),
         User.username,
         db.func.coalesce(db.func.sum(getattr(Entry, metric)), 0).label('total')
-    ).join(Entry, User.id == Entry.user_id)\
-     .filter(Entry.date >= start_date)\
-     .group_by(User.id, User.username)\
-     .order_by(db.text('total DESC'))\
-     .all()
+    ).join(Entry, User.id == Entry.user_id)
+
+    # Apply the correct date filter
+    if timeframe == 'day':
+        query = query.filter(Entry.date == today)
+        timeframe_text = "Today"
+    elif timeframe == 'week':
+        week_start = today - datetime.timedelta(days=today.weekday())
+        query = query.filter(
+            Entry.date >= week_start,
+            Entry.date <= today
+        )
+        timeframe_text = "This Week"
+    elif timeframe == 'month':
+        query = query.filter(
+            db.extract('year', Entry.date) == today.year,
+            db.extract('month', Entry.date) == today.month
+        )
+        timeframe_text = "This Month"
+    elif timeframe == 'year':
+        query = query.filter(
+            db.extract('year', Entry.date) == today.year
+        )
+        timeframe_text = "This Year"
+
+    # Complete the query with grouping and ordering
+    results = query.group_by(User.id, User.username)\
+                  .order_by(db.text('total DESC'))\
+                  .all()
 
     # Format the leaderboard data
     leaderboard_data = [
