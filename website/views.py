@@ -860,13 +860,30 @@ def leaderboard():
     
     today = datetime.date.today()
     
-    # Get all entries and filter in Python for more precise control
+    # Debug print statements
+    print(f"\nDEBUG: Leaderboard Request")
+    print(f"Metric: {metric}")
+    print(f"Timeframe: {timeframe}")
+    print(f"Today's date: {today}")
+    
+    # Get all entries and print them for debugging
+    all_entries = Entry.query.all()
+    print("\nAll entries in database:")
+    for entry in all_entries:
+        print(f"User: {entry.user_id}, Date: {entry.date}, {metric}: {getattr(entry, metric)}")
+    
+    # Get filtered entries
     entries = Entry.query.join(User).with_entities(
         Entry.date,
         Entry.user_id,
         User.username,
         getattr(Entry, metric)
     ).all()
+    
+    # Print filtered entries before processing
+    print("\nFiltered entries before timeframe filter:")
+    for entry in entries:
+        print(f"User: {entry.user_id}, Date: {entry.date}, {metric}: {getattr(entry, metric)}")
     
     # Filter entries based on timeframe
     filtered_entries = []
