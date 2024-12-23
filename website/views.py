@@ -868,26 +868,26 @@ def leaderboard():
     base_query = db.session.query(
         Entry.user_id,
         User.username,
-        db.func.sum(getattr(Entry, metric)).label('total')
+        db.func.coalesce(db.func.sum(getattr(Entry, metric)), 0).label('total')  # Handle NULL values
     ).join(User)
 
     # Apply date filter based on timeframe
     if timeframe == 'day':
-        query = base_query.filter(Entry.date == today)
+        query = base_query.filter(Entry.date == today)  # Exact date match for today
         timeframe_text = "Today"
     elif timeframe == 'week':
-        query = base_query.filter(Entry.date >= start_of_week)
+        query = base_query.filter(Entry.date.between(start_of_week, today))  # Between start of week and today
         timeframe_text = "This Week"
     elif timeframe == 'month':
-        query = base_query.filter(Entry.date >= start_of_month)
+        query = base_query.filter(Entry.date.between(start_of_month, today))  # Between start of month and today
         timeframe_text = "This Month"
     elif timeframe == 'year':
-        query = base_query.filter(Entry.date >= start_of_year)
+        query = base_query.filter(Entry.date.between(start_of_year, today))  # Between start of year and today
         timeframe_text = "This Year"
 
     # Group and order results
     results = query.group_by(Entry.user_id, User.username)\
-                  .order_by(db.func.sum(getattr(Entry, metric)).desc())\
+                  .order_by(db.text('total DESC'))\
                   .all()
 
     # Format the leaderboard data
