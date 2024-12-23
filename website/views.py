@@ -7,6 +7,9 @@ import datetime
 import os
 from werkzeug.utils import secure_filename
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 views = Blueprint('views', __name__)
 
@@ -45,7 +48,35 @@ def fix_timestamp(timestamp):
 @login_required
 def home():
     """Home page route - renders the main dashboard"""
-    return render_template("index.html", user=current_user)
+    try:
+        logger.info(f"User {current_user.username} accessing home page")
+        # Get the user's entries for today
+        today = datetime.date.today()
+        entry = Entry.query.filter_by(
+            user_id=current_user.id,
+            date=today
+        ).first()
+        
+        # Get user's metric preferences
+        metric_preferences = MetricPreference.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).order_by(MetricPreference.priority).all()
+        
+        # Get custom metrics
+        custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
+        
+        return render_template(
+            "index.html",
+            user=current_user,
+            today_entry=entry,
+            metric_preferences=metric_preferences,
+            custom_metrics=custom_metrics
+        )
+    except Exception as e:
+        logger.error(f"Error in home route: {str(e)}", exc_info=True)
+        flash('An error occurred while loading the dashboard. Please try again.', category='error')
+        return render_template("index.html", user=current_user)
 
 @views.route('/view_charts', methods=['GET', 'POST'])
 @login_required
