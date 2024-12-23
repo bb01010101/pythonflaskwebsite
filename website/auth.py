@@ -124,39 +124,43 @@ def leaderboard():
             'screen_time': 'hours'
         }
 
-        # Basic query for default metrics
-        query = db.session.query(
-            User.id.label('user_id'),
-            User.username.label('username'),
-            func.coalesce(func.sum(metric_columns[metric]), 0).label('score')
-        ).join(
-            Entry, User.id == Entry.user_id
-        ).filter(
-            Entry.date >= start_date,
-            Entry.date <= end_date
-        ).group_by(User.id, User.username)
+        # First, get all users
+        users = User.query.all()
+        print(f"Found {len(users)} users")  # Debug log
 
-        print(f"Generated SQL query: {query}")  # Debug log
+        # Then, for each user, get their metric sum for the time period
+        leaderboard_data = []
+        for user in users:
+            entries = Entry.query.filter(
+                Entry.user_id == user.id,
+                Entry.date >= start_date,
+                Entry.date <= end_date
+            ).all()
+            
+            # Calculate total score for the metric
+            total_score = 0
+            for entry in entries:
+                value = getattr(entry, metric)
+                if value is not None:
+                    total_score += value
+            
+            leaderboard_data.append({
+                'user_id': user.id,
+                'username': user.username,
+                'score': round(total_score, 2),
+                'unit': metric_units[metric]
+            })
 
-        # Sort based on metric type
+        print(f"Processed {len(leaderboard_data)} entries for leaderboard")  # Debug log
+
+        # Sort the leaderboard
         if metric == 'screen_time':
-            query = query.order_by(func.sum(metric_columns[metric]).asc())
+            leaderboard_data.sort(key=lambda x: x['score'])
         else:
-            query = query.order_by(func.sum(metric_columns[metric]).desc())
-
-        leaderboard_data = query.all()
-        print(f"Query returned {len(leaderboard_data)} results")  # Debug log
-
-        # Format the data for template
-        leaderboard = [{
-            'user_id': entry.user_id,
-            'username': entry.username,
-            'score': round(entry.score if entry.score else 0, 2),
-            'unit': metric_units[metric]
-        } for entry in leaderboard_data]
+            leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
 
         return render_template('leaderboard.html',
-                             leaderboard=leaderboard,
+                             leaderboard=leaderboard_data,
                              current_user=current_user,
                              user=current_user,
                              selected_timeframe=timeframe_display,
@@ -165,5 +169,7 @@ def leaderboard():
                              
     except Exception as e:
         print(f"Error in leaderboard route: {str(e)}")  # Debug log
+        import traceback
+        traceback.print_exc()  # Print full error traceback
         flash('Error loading leaderboard. Please try again.', category='error')
         return redirect(url_for('views.home'))
