@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Settings</h2>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Strava Integration</h5>
+            {% if not strava_connected %}
+            <p>Connect your Strava account to automatically sync your activities.</p>
+            <a href="{{ url_for('views.strava_auth') }}" class="btn btn-primary">
+                <i class="fab fa-strava"></i> Connect to Strava
+            </a>
+            {% else %}
+            <p class="text-success">
+                <i class="fas fa-check-circle"></i> Connected to Strava
+            </p>
+            <a href="{{ url_for('views.disconnect_strava') }}" class="btn btn-outline-danger">
+                Disconnect Strava
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

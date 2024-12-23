@@ -15,6 +15,10 @@ class User(db.Model, UserMixin):
     likes = db.relationship('Like', backref='user', lazy=True)
     custom_metrics = db.relationship('CustomMetric', backref='creator', lazy=True)
     metric_preferences = db.relationship('MetricPreference', backref='user', lazy=True)
+    strava_access_token = db.Column(db.String(150))
+    strava_refresh_token = db.Column(db.String(150))
+    strava_token_expires_at = db.Column(db.DateTime)
+    strava_athlete_id = db.Column(db.String(50))
 
 class CustomMetric(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -87,6 +91,18 @@ class Comment(db.Model):
     timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+
+class Activity(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    strava_id = db.Column(db.String(50), unique=True)
+    activity_type = db.Column(db.String(50))
+    distance = db.Column(db.Float)  # in meters
+    duration = db.Column(db.Float)  # in seconds
+    date = db.Column(db.DateTime, nullable=False)
+    calories = db.Column(db.Integer)
+    
+    user = db.relationship('User', backref=db.backref('activities', lazy=True))
 
 
 

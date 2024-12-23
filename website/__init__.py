@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
+migrate = Migrate()
 
 def create_app():
     app = Flask(__name__)
@@ -38,7 +39,7 @@ def create_app():
     
     try:
         db.init_app(app)
-        migrate = Migrate(app, db)
+        migrate.init_app(app, db)
         logger.info("Successfully initialized database and extensions")
     except Exception as e:
         logger.error(f"Error initializing extensions: {str(e)}", exc_info=True)

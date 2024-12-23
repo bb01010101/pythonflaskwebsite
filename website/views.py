@@ -8,6 +8,7 @@ import os
 from werkzeug.utils import secure_filename
 import io
 import logging
+from .strava_integration import StravaIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,12 @@ views = Blueprint('views', __name__)
 
 #Configure image handling for database storage
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# Add these environment variables to your configuration
+strava_integration = StravaIntegration(
+    client_id=os.getenv('STRAVA_CLIENT_ID'),
+    client_secret=os.getenv('STRAVA_CLIENT_SECRET')
+)
 
 def allowed_file(filename):
     """
@@ -706,4 +713,50 @@ def delete_custom_metric(metric_id):
         db.session.rollback()
         print(f"Error deleting metric: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@views.route('/settings')
+@login_required
+def settings():
+    return render_template(
+        'settings.html',
+        strava_connected=current_user.strava_access_token is not None
+    )
+
+@views.route('/strava/auth')
+@login_required
+def strava_auth():
+    redirect_uri = url_for('views.strava_callback', _external=True)
+    auth_url = strava_integration.get_auth_url(redirect_uri)
+    return redirect(auth_url)
+
+@views.route('/strava/callback')
+@login_required
+def strava_callback():
+    code = request.args.get('code')
+    token_response = strava_integration.exchange_code_for_token(code)
+    
+    current_user.strava_access_token = token_response['access_token']
+    current_user.strava_refresh_token = token_response['refresh_token']
+    current_user.strava_token_expires_at = datetime.fromtimestamp(token_response['expires_at'])
+    current_user.strava_athlete_id = str(token_response['athlete'].id)
+    
+    db.session.commit()
+    
+    # Sync the last two weeks of activities
+    strava_integration.sync_activities(current_user)
+    
+    flash('Successfully connected to Strava!', 'success')
+    return redirect(url_for('views.settings'))
+
+@views.route('/strava/disconnect')
+@login_required
+def disconnect_strava():
+    current_user.strava_access_token = None
+    current_user.strava_refresh_token = None
+    current_user.strava_token_expires_at = None
+    current_user.strava_athlete_id = None
+    db.session.commit()
+    
+    flash('Disconnected from Strava', 'success')
+    return redirect(url_for('views.settings'))
 
