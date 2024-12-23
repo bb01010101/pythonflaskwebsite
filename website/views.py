@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
 from flask_login import login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry
@@ -8,15 +8,15 @@ import datetime
 from flask_socketio import emit
 import os
 from werkzeug.utils import secure_filename
+import io
+import psycopg2
+from sqlalchemy import LargeBinary
 
 views = Blueprint('views', __name__)
 
-# Configure upload folder - use absolute path
-UPLOAD_FOLDER = '/opt/render/project/src/website/static/uploads' if os.getenv('RENDER') else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+#Configure image handling for database storage
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-# Create upload folder if it doesn't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     """
@@ -24,6 +24,15 @@ def allowed_file(filename):
     Returns True if the file extension is in ALLOWED_EXTENSIONS
     """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Update Post model to use binary storage
+class Post(db.Model):
+    __tablename__ = 'post'
+    __table_args__ = {'extend_existing': True}  # Allow redefining the table
+
+    # ... (keep existing fields)
+    image_data = db.Column(LargeBinary)  # Add this field for binary image storage
+    image_filename = db.Column(db.String(255))  # Add this to store original filename
 
 def fix_timestamp(timestamp):
     """
@@ -382,54 +391,53 @@ def posts():
             comment.timestamp = fix_timestamp(comment.timestamp)
     return render_template('posts.html', user=current_user, posts=posts)
 
+# Update the create-post route to store images in the database
 @views.route('/create-post', methods=['GET', 'POST'])
 @login_required
 def create_post():
-    """
-    Handle post creation:
-    GET: Display the create post form
-    POST: Process the form submission and create a new post
-    """
     if request.method == 'POST':
-        # Get form data
         content = request.form.get('content')
         file = request.files.get('image')
-        image_path = None
+        image_data = None
+        image_filename = None
 
-        # Handle image upload if present
         if file and allowed_file(file.filename):
             try:
-                # Secure the filename and add timestamp to make it unique
-                filename = secure_filename(file.filename)
-                filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                # Save the file to the upload folder
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(file_path)
-                
-                # Set permissions for the uploaded file
-                os.chmod(file_path, 0o644)
-                
-                image_path = filename  # Store filename for database
+                image_filename = secure_filename(file.filename)
+                image_data = file.read()
             except Exception as e:
-                print(f"Error saving image: {e}")
-                flash('Error uploading image. Please try again.', category='error')
+                print(f"Error processing image: {e}")
+                flash('Error processing image. Please try again.', category='error')
                 return redirect(url_for('views.create_post'))
 
-        # Create new post with current UTC time
         new_post = Post(
             content=content,
-            image_path=image_path,
+            image_data=image_data,
+            image_filename=image_filename,
             user_id=current_user.id,
             timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
-        # Save to database
+        
         db.session.add(new_post)
         db.session.commit()
         flash('Post created successfully!', category='success')
         return redirect(url_for('views.posts'))
     
-    # Handle GET request - display the create post form
     return render_template('create_post.html', user=current_user)
+
+# Add a route to serve images from the database
+@views.route('/get-image/<int:post_id>')
+@login_required
+def get_image(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.image_data:
+        return send_file(
+            io.BytesIO(post.image_data),
+            mimetype='image/jpeg',  # You might want to store and use the actual mimetype
+            as_attachment=False,
+            download_name=post.image_filename
+        )
+    return '', 404
 
 @views.route('/like-post/<int:post_id>', methods=['POST'])
 @login_required
@@ -454,36 +462,18 @@ def like_post(post_id):
 
     return redirect(url_for('views.posts'))
 
+# Update the delete-post route to handle database-stored images
 @views.route('/delete-post/<int:post_id>', methods=['POST'])
 @login_required
 def delete_post(post_id):
-    """
-    Handle post deletion:
-    - Allow admin user 'bri' to delete any post
-    - Allow regular users to delete only their own posts
-    - Delete associated image file if it exists
-    - Remove post from database
-    """
     post = Post.query.get_or_404(post_id)
-    # Check if current user is either the post author or the admin user 'bri'
     if post.user_id != current_user.id and current_user.username != 'bri':
         flash('You cannot delete this post!', category='error')
         return redirect(url_for('views.posts'))
 
-    # Delete associated image file if it exists
-    if post.image_path:
-        image_path = os.path.join(UPLOAD_FOLDER, post.image_path)
-        if os.path.exists(image_path):
-            try:
-                os.remove(image_path)
-            except Exception as e:
-                print(f"Error deleting image file: {e}")
-
-    # Delete post from database
     db.session.delete(post)
     db.session.commit()
     
-    # Show appropriate success message
     if current_user.username == 'bri' and post.user_id != current_user.id:
         flash('Post deleted by admin!', category='success')
     else:

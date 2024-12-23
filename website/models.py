@@ -4,6 +4,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin 
 from sqlalchemy.sql import func
 import datetime
+import io
+import psycopg2
+from sqlalchemy import LargeBinary
 
 
 class User(db.Model, UserMixin):
@@ -69,6 +72,8 @@ class Post(db.Model):
     timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
+    image_data = db.Column(LargeBinary)  # Add this field for binary image storage
+    image_filename = db.Column(db.String(255))  # Add this to store original filename
 
     def like_count(self):
         return len(self.likes)

@@ -46,7 +46,9 @@
                     <p class="card-text">{{ post.content }}</p>
                     {% if post.image_path %}
                     <div class="post-image-container">
-                        <img src="{{ url_for('static', filename='uploads/' + post.image_path) }}" class="post-image" alt="Post image">
+                        {% if post.image_data %}
+                        <img src="{{ url_for('views.get_image', post_id=post.id) }}" class="post-image" alt="Post image">
+                       {% endif %}
                     </div>
                     {% endif %}
                     
