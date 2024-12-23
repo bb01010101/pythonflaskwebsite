@@ -83,30 +83,6 @@ def leaderboard():
         metric = request.args.get('metric', 'running_mileage')
         timeframe = request.args.get('timeframe', 'day')
         
-        # Calculate the date range based on timeframe
-        today = datetime.now().date()
-        if timeframe == 'day':
-            start_date = today
-            end_date = today
-            timeframe_display = 'Today'
-        elif timeframe == 'week':
-            start_date = today - timedelta(days=today.weekday())
-            end_date = start_date + timedelta(days=6)
-            timeframe_display = 'This Week'
-        elif timeframe == 'month':
-            start_date = today.replace(day=1)
-            if today.month == 12:
-                end_date = today.replace(day=31)
-            else:
-                end_date = (today.replace(day=1, month=today.month + 1) - timedelta(days=1))
-            timeframe_display = 'This Month'
-        else:  # year
-            start_date = today.replace(month=1, day=1)
-            end_date = today.replace(month=12, day=31)
-            timeframe_display = 'This Year'
-
-        print(f"Calculating leaderboard for {metric} from {start_date} to {end_date}")
-        
         # Map metric names to their database column names
         metric_mapping = {
             'running_mileage': 'running_mileage',
@@ -133,11 +109,7 @@ def leaderboard():
             User.username,
             func.coalesce(func.sum(getattr(Entry, db_column)), 0).label('total')
         ).outerjoin(
-            Entry, db.and_(
-                User.id == Entry.user_id,
-                Entry.date >= start_date,
-                Entry.date <= end_date
-            )
+            Entry, User.id == Entry.user_id
         ).group_by(User.id, User.username)
 
         # Sort based on metric type
@@ -165,7 +137,7 @@ def leaderboard():
                              leaderboard=leaderboard,
                              current_user=current_user,
                              user=current_user,
-                             selected_timeframe=timeframe_display,
+                             selected_timeframe=timeframe,
                              selected_metric=metric,
                              request=request)
                              
