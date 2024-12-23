@@ -860,90 +860,88 @@ def leaderboard():
     
     today = datetime.date.today()
     
-    # Set up date filters
+    # Calculate date ranges
     if timeframe == 'day':
-        date_filter = (Entry.date == today)
-        activity_date_filter = (db.func.date(Activity.date) == today)
+        start_date = today
     elif timeframe == 'week':
-        week_start = today - datetime.timedelta(days=today.weekday())
-        date_filter = (Entry.date >= week_start)
-        activity_date_filter = (db.func.date(Activity.date) >= week_start)
+        start_date = today - datetime.timedelta(days=today.weekday())
     elif timeframe == 'month':
-        month_start = today.replace(day=1)
-        date_filter = (Entry.date >= month_start)
-        activity_date_filter = (db.func.date(Activity.date) >= month_start)
+        start_date = today.replace(day=1)
     else:  # year
-        year_start = today.replace(month=1, day=1)
-        date_filter = (Entry.date >= year_start)
-        activity_date_filter = (db.func.date(Activity.date) >= year_start)
-
+        start_date = today.replace(month=1, day=1)
+    
+    logger.info(f"Leaderboard request - Metric: {metric}, Timeframe: {timeframe}")
+    logger.info(f"Date range: {start_date} to {today}")
+    
+    leaderboard_data = []
+    
     if metric == 'running_mileage':
-        # Get manual entries
-        manual_entries = db.session.query(
-            User.id.label('user_id'),
-            User.username,
-            db.func.coalesce(db.func.sum(Entry.running_mileage), 0).label('manual_miles')
-        ).join(User).filter(date_filter).group_by(User.id, User.username).subquery()
-
-        # Get Strava activities
-        strava_entries = db.session.query(
-            User.id.label('user_id'),
-            User.username,
-            db.func.coalesce(db.func.sum(Activity.distance * 0.000621371), 0).label('strava_miles')
-        ).join(User).filter(activity_date_filter).group_by(User.id, User.username).subquery()
-
-        # Combine both queries
-        results = db.session.query(
-            User.id.label('user_id'),
-            User.username,
-            db.func.coalesce(manual_entries.c.manual_miles, 0) + 
-            db.func.coalesce(strava_entries.c.strava_miles, 0).label('total_miles')
-        ).outerjoin(
-            manual_entries, User.id == manual_entries.c.user_id
-        ).outerjoin(
-            strava_entries, User.id == strava_entries.c.user_id
-        ).filter(
-            db.or_(
-                manual_entries.c.manual_miles > 0,
-                strava_entries.c.strava_miles > 0
-            )
-        ).all()
-
-        leaderboard_data = [{
-            'user_id': r.user_id,
-            'username': r.username,
-            'score': round(float(r.total_miles), 2),
-            'unit': 'miles'
-        } for r in results]
-
+        # Get all users
+        users = User.query.all()
+        
+        for user in users:
+            # Get manual entries
+            manual_entries = Entry.query.filter(
+                Entry.user_id == user.id,
+                Entry.date >= start_date,
+                Entry.date <= today
+            ).with_entities(db.func.sum(Entry.running_mileage)).scalar() or 0
+            
+            # Get Strava activities
+            strava_miles = Activity.query.filter(
+                Activity.user_id == user.id,
+                db.func.date(Activity.date) >= start_date,
+                db.func.date(Activity.date) <= today
+            ).with_entities(db.func.sum(Activity.distance * 0.000621371)).scalar() or 0
+            
+            total_miles = manual_entries + strava_miles
+            
+            logger.info(f"User {user.username} - Manual: {manual_entries}, Strava: {strava_miles}, Total: {total_miles}")
+            
+            if total_miles > 0:
+                leaderboard_data.append({
+                    'user_id': user.id,
+                    'username': user.username,
+                    'score': round(float(total_miles), 2),
+                    'unit': 'miles'
+                })
+    
     else:
-        # For other metrics
-        results = db.session.query(
-            User.id.label('user_id'),
+        # For other metrics, query Entry table directly
+        entries = db.session.query(
+            User.id,
             User.username,
-            db.func.coalesce(db.func.sum(getattr(Entry, metric)), 0).label('value')
-        ).join(Entry).filter(date_filter).group_by(User.id, User.username).having(
-            db.func.sum(getattr(Entry, metric)) > 0
-        ).all()
-
-        leaderboard_data = [{
-            'user_id': r.user_id,
-            'username': r.username,
-            'score': round(float(r.value), 2),
-            'unit': 'hours' if metric in ['sleep_hours', 'screen_time'] else 
-                   'oz' if metric == 'water_intake' else ''
-        } for r in results]
-
+            db.func.sum(getattr(Entry, metric)).label('total')
+        ).join(Entry).filter(
+            Entry.date >= start_date,
+            Entry.date <= today
+        ).group_by(User.id, User.username).all()
+        
+        for entry in entries:
+            if entry.total and entry.total > 0:
+                logger.info(f"User {entry.username} - {metric}: {entry.total}")
+                leaderboard_data.append({
+                    'user_id': entry.id,
+                    'username': entry.username,
+                    'score': round(float(entry.total), 2),
+                    'unit': 'hours' if metric in ['sleep_hours', 'screen_time'] else 
+                           'oz' if metric == 'water_intake' else ''
+                })
+    
     # Sort by score descending
     leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
-
+    
+    logger.info("Final leaderboard data:")
+    for entry in leaderboard_data:
+        logger.info(f"{entry['username']}: {entry['score']} {entry['unit']}")
+    
     timeframe_text = {
         'day': 'Today',
         'week': 'This Week',
         'month': 'This Month',
         'year': 'This Year'
     }.get(timeframe, 'This Week')
-
+    
     return render_template('leaderboard.html',
                          user=current_user,
                          leaderboard=leaderboard_data,
