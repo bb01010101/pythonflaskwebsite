@@ -860,82 +860,83 @@ def leaderboard():
     
     today = datetime.date.today()
     
-    # Calculate date ranges based on timeframe
+    # Set up date filters
     if timeframe == 'day':
-        start_date = today
-        end_date = today
+        date_filter = (Entry.date == today)
+        activity_date_filter = (db.func.date(Activity.date) == today)
     elif timeframe == 'week':
-        start_date = today - datetime.timedelta(days=today.weekday())
-        end_date = today
+        week_start = today - datetime.timedelta(days=today.weekday())
+        date_filter = (Entry.date >= week_start)
+        activity_date_filter = (db.func.date(Activity.date) >= week_start)
     elif timeframe == 'month':
-        start_date = today.replace(day=1)
-        end_date = today
+        month_start = today.replace(day=1)
+        date_filter = (Entry.date >= month_start)
+        activity_date_filter = (db.func.date(Activity.date) >= month_start)
     else:  # year
-        start_date = today.replace(month=1, day=1)
-        end_date = today
+        year_start = today.replace(month=1, day=1)
+        date_filter = (Entry.date >= year_start)
+        activity_date_filter = (db.func.date(Activity.date) >= year_start)
 
-    # Get entries from both Entry and Activity tables with date filtering
     if metric == 'running_mileage':
-        # Manual entries within date range
-        entries = db.session.query(
+        # Get manual entries
+        manual_entries = db.session.query(
             User.id.label('user_id'),
             User.username,
-            db.func.sum(Entry.running_mileage).label('value')
-        ).join(Entry, User.id == Entry.user_id)\
-         .filter(Entry.date.between(start_date, end_date))\
-         .group_by(User.id, User.username)
+            db.func.coalesce(db.func.sum(Entry.running_mileage), 0).label('manual_miles')
+        ).join(User).filter(date_filter).group_by(User.id, User.username).subquery()
 
-        # Strava activities within date range
-        activities = db.session.query(
+        # Get Strava activities
+        strava_entries = db.session.query(
             User.id.label('user_id'),
             User.username,
-            db.func.sum(Activity.distance * 0.000621371).label('value')  # Convert meters to miles
-        ).join(Activity, User.id == Activity.user_id)\
-         .filter(Activity.date.between(start_date, end_date))\
-         .group_by(User.id, User.username)
+            db.func.coalesce(db.func.sum(Activity.distance * 0.000621371), 0).label('strava_miles')
+        ).join(User).filter(activity_date_filter).group_by(User.id, User.username).subquery()
 
-        # Combine results
-        results = []
-        entries_dict = {(e.user_id, e.username): e.value or 0 for e in entries.all()}
-        activities_dict = {(a.user_id, a.username): a.value or 0 for a in activities.all()}
-        
-        # Merge the dictionaries
-        all_users = set(entries_dict.keys()) | set(activities_dict.keys())
-        for user_id, username in all_users:
-            total = (entries_dict.get((user_id, username), 0) + 
-                    activities_dict.get((user_id, username), 0))
-            results.append({
-                'user_id': user_id,
-                'username': username,
-                'value': total
-            })
-    else:
-        # For other metrics, just use Entry table
+        # Combine both queries
         results = db.session.query(
             User.id.label('user_id'),
             User.username,
-            db.func.sum(getattr(Entry, metric)).label('value')
-        ).join(Entry, User.id == Entry.user_id)\
-         .filter(Entry.date.between(start_date, end_date))\
-         .group_by(User.id, User.username)\
-         .all()
+            db.func.coalesce(manual_entries.c.manual_miles, 0) + 
+            db.func.coalesce(strava_entries.c.strava_miles, 0).label('total_miles')
+        ).outerjoin(
+            manual_entries, User.id == manual_entries.c.user_id
+        ).outerjoin(
+            strava_entries, User.id == strava_entries.c.user_id
+        ).filter(
+            db.or_(
+                manual_entries.c.manual_miles > 0,
+                strava_entries.c.strava_miles > 0
+            )
+        ).all()
 
-    # Convert to leaderboard format
-    leaderboard_data = [
-        {
-            'user_id': r['user_id'] if isinstance(r, dict) else r.user_id,
-            'username': r['username'] if isinstance(r, dict) else r.username,
-            'score': round(float(r['value'] if isinstance(r, dict) else r.value or 0), 2),
-            'unit': 'miles' if metric == 'running_mileage' else 
-                   'hours' if metric in ['sleep_hours', 'screen_time'] else
+        leaderboard_data = [{
+            'user_id': r.user_id,
+            'username': r.username,
+            'score': round(float(r.total_miles), 2),
+            'unit': 'miles'
+        } for r in results]
+
+    else:
+        # For other metrics
+        results = db.session.query(
+            User.id.label('user_id'),
+            User.username,
+            db.func.coalesce(db.func.sum(getattr(Entry, metric)), 0).label('value')
+        ).join(Entry).filter(date_filter).group_by(User.id, User.username).having(
+            db.func.sum(getattr(Entry, metric)) > 0
+        ).all()
+
+        leaderboard_data = [{
+            'user_id': r.user_id,
+            'username': r.username,
+            'score': round(float(r.value), 2),
+            'unit': 'hours' if metric in ['sleep_hours', 'screen_time'] else 
                    'oz' if metric == 'water_intake' else ''
-        }
-        for r in results
-    ]
-    
+        } for r in results]
+
     # Sort by score descending
     leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
-    
+
     timeframe_text = {
         'day': 'Today',
         'week': 'This Week',
