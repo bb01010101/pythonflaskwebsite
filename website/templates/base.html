@@ -58,10 +58,21 @@
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle me-1"></i>{{ user.username }}
+                        <a class="nav-link dropdown-toggle" href="#" id="settingsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-cog"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <span class="dropdown-item-text">
+                                    <i class="fas fa-user-circle me-2"></i>{{ user.username }}
+                                </span>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('views.settings') }}">
+                                    <i class="fas fa-solid fa-link me-2"></i>Connect Accounts
+                                </a>
+                            </li>
                             <li>
                                 <button class="dropdown-item" id="themeToggle">
                                     <i class="fas fa-moon me-2"></i>Dark Mode
@@ -73,12 +84,13 @@
                                     <i class="fas fa-sign-out-alt me-2"></i>Logout
                                 </a>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('views.privacy_policy') }}">
+                                    <i class="fas fa-shield-alt me-2"></i>Privacy Policy
+                                </a>
+                            </li>
                         </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('views.settings') }}">
-                            <i class="fas fa-cog"></i>
-                        </a>
                     </li>
                     {% else %}
                     <li class="nav-item">
