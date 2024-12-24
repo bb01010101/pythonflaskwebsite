@@ -920,8 +920,6 @@ def leaderboard():
     users = User.query.all()
     
     for user in users:
-        total_value = 0
-        
         # Get entries for the user within the date range
         entries = Entry.query.filter(
             Entry.user_id == user.id,
@@ -929,18 +927,32 @@ def leaderboard():
             Entry.date <= today
         ).all()
         
-        # Sum up the values for the selected metric
+        # Get Strava activities if metric is running_mileage
+        if metric == 'running_mileage':
+            activities = Activity.query.filter(
+                Activity.user_id == user.id,
+                Activity.date >= datetime.datetime.combine(start_date, datetime.time.min),
+                Activity.date <= datetime.datetime.combine(today, datetime.time.max)
+            ).all()
+        else:
+            activities = []
+        
+        # Calculate total value
+        total_value = 0
+        
+        # Add up values from manual entries
         for entry in entries:
-            if metric == 'running_mileage':
-                total_value += entry.running_mileage
-            elif metric == 'sleep_hours':
-                total_value += entry.sleep_hours
-            elif metric == 'calories':
-                total_value += entry.calories
-            elif metric == 'water_intake':
-                total_value += entry.water_intake
-            elif metric == 'screen_time':
-                total_value += entry.screen_time
+            if hasattr(entry, metric):
+                metric_value = getattr(entry, metric)
+                if metric_value is not None:
+                    total_value += metric_value
+        
+        # Add Strava activities if applicable
+        if metric == 'running_mileage':
+            for activity in activities:
+                if activity.distance:
+                    # Convert meters to miles
+                    total_value += activity.distance * 0.000621371
         
         # Only add to leaderboard if they have a value greater than 0
         if total_value > 0:
@@ -949,9 +961,7 @@ def leaderboard():
                 'user_id': user.id,
                 'username': user.username,
                 'score': round(float(total_value), 2),
-                'unit': 'miles' if metric == 'running_mileage' else
-                       'hours' if metric in ['sleep_hours', 'screen_time'] else
-                       'oz' if metric == 'water_intake' else ''
+                'unit': get_metric_unit(metric)
             })
     
     # Sort by score descending
@@ -968,11 +978,33 @@ def leaderboard():
         'year': 'This Year'
     }.get(timeframe, 'This Week')
     
+    # Get available metrics for the dropdown
+    available_metrics = [
+        {'id': 'running_mileage', 'name': 'Running Mileage', 'unit': 'miles'},
+        {'id': 'sleep_hours', 'name': 'Sleep Hours', 'unit': 'hours'},
+        {'id': 'calories', 'name': 'Calories', 'unit': 'cal'},
+        {'id': 'water_intake', 'name': 'Water Intake', 'unit': 'oz'},
+        {'id': 'screen_time', 'name': 'Screen Time', 'unit': 'hours'}
+    ]
+    
     return render_template('leaderboard.html',
                          user=current_user,
                          leaderboard=leaderboard_data,
                          selected_metric=metric,
-                         selected_timeframe=timeframe_text)
+                         selected_timeframe=timeframe,
+                         timeframe_text=timeframe_text,
+                         available_metrics=available_metrics)
+
+def get_metric_unit(metric):
+    """Helper function to get the appropriate unit for each metric"""
+    units = {
+        'running_mileage': 'miles',
+        'sleep_hours': 'hours',
+        'calories': 'cal',
+        'water_intake': 'oz',
+        'screen_time': 'hours'
+    }
+    return units.get(metric, '')
 
 @views.route('/privacy_policy')
 def privacy_policy():
