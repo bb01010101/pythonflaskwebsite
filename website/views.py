@@ -973,4 +973,8 @@ def leaderboard():
                          leaderboard=leaderboard_data,
                          selected_metric=metric,
                          selected_timeframe=timeframe_text)
+@views.route('/privacy-policy')
+def privacy_policy():
+    """Privacy Policy page route"""
+    return render_template("privacy_policy.html", user=current_user)
 
