@@ -5,31 +5,64 @@
 
 
 {% block content %}
-<div class="container mt-5">
-   <h1>Privacy Policy</h1>
-   <p class="text-muted">Last updated: December 23, 2024</p>
+<style>
+    /* Dark mode specific styles */
+    [data-bs-theme="dark"] .privacy-card {
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    [data-bs-theme="dark"] .privacy-card h2,
+    [data-bs-theme="dark"] .privacy-card h3 {
+        color: #fff;
+    }
+    [data-bs-theme="dark"] .privacy-card p,
+    [data-bs-theme="dark"] .privacy-card ul li {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    [data-bs-theme="dark"] .text-muted {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+    /* Light mode specific styles */
+    [data-bs-theme="light"] .privacy-card {
+        background-color: #fff;
+    }
+    /* Common styles */
+    .privacy-card {
+        transition: background-color 0.3s ease;
+    }
+    .privacy-card ul {
+        padding-left: 1.5rem;
+    }
+    .privacy-card ul li {
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<div class="container mt-5 mb-5">
+   <h1 class="mb-3">Privacy Policy</h1>
+   <p class="text-muted mb-4">Last updated: December 23, 2024</p>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>1. Introduction</h2>
-           <p>At LyfMAx, we are committed to protecting your privacy and handling your data in a transparent and secure manner. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our health tracking application.</p>
+           <h2 class="mb-3">1. Introduction</h2>
+           <p>At LyfMax, we are committed to protecting your privacy and handling your data in a transparent and secure manner. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our health tracking application.</p>
        </div>
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>2. Information We Collect</h2>
-           <h3>2.1 Personal Information</h3>
-           <ul>
+           <h2 class="mb-3">2. Information We Collect</h2>
+           <h3 class="mb-2">2.1 Personal Information</h3>
+           <ul class="mb-4">
                <li>Name and email address</li>
                <li>Account credentials</li>
                <li>Profile information</li>
            </ul>
 
 
-           <h3>2.2 Health and Fitness Data</h3>
+           <h3 class="mb-2">2.2 Health and Fitness Data</h3>
            <ul>
                <li>Sleep patterns and duration</li>
                <li>Caloric intake and nutrition information</li>
@@ -45,9 +78,9 @@
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>3. How We Use Your Information</h2>
+           <h2 class="mb-3">3. How We Use Your Information</h2>
            <ul>
                <li>To provide and maintain our health tracking services</li>
                <li>To personalize your experience and deliver tailored insights</li>
@@ -60,11 +93,11 @@
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>4. Data Sharing and Disclosure</h2>
-           <p>We may share your information with:</p>
-           <ul>
+           <h2 class="mb-3">4. Data Sharing and Disclosure</h2>
+           <p class="mb-3">We may share your information with:</p>
+           <ul class="mb-3">
                <li>Garmin (for device integration and activity tracking)</li>
                <li>COROS (for device integration and activity tracking)</li>
                <li>Strava (for activity tracking)</li>
@@ -76,10 +109,10 @@
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>5. Data Security</h2>
-           <p>We implement appropriate technical and organizational security measures to protect your data, including:</p>
+           <h2 class="mb-3">5. Data Security</h2>
+           <p class="mb-3">We implement appropriate technical and organizational security measures to protect your data, including:</p>
            <ul>
                <li>Encryption of data in transit and at rest</li>
                <li>Regular security assessments</li>
@@ -90,10 +123,10 @@
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>6. Your Rights and Choices</h2>
-           <p>You have the right to:</p>
+           <h2 class="mb-3">6. Your Rights and Choices</h2>
+           <p class="mb-3">You have the right to:</p>
            <ul>
                <li>Access your personal information</li>
                <li>Correct inaccurate data</li>
@@ -108,26 +141,26 @@
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>7. Data Retention</h2>
+           <h2 class="mb-3">7. Data Retention</h2>
            <p>We retain your data for as long as your account is active or as needed to provide services. You can request deletion of your account and associated data at any time.</p>
        </div>
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>8. International Data Transfers</h2>
+           <h2 class="mb-3">8. International Data Transfers</h2>
            <p>Your data may be processed in countries where we maintain servers or where our service providers operate. We ensure appropriate safeguards are in place for international transfers.</p>
        </div>
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>9. Contact Us</h2>
-           <p>If you have questions about this Privacy Policy or our practices, please contact us at:</p>
+           <h2 class="mb-3">9. Contact Us</h2>
+           <p class="mb-3">If you have questions about this Privacy Policy or our practices, please contact us at:</p>
            <ul>
                <li>Email: bb7906@princeton.edu</li>
                <li>Address: 3 Shepherd Lane, Madison, NJ, United States, 07940</li>
@@ -136,9 +169,9 @@
    </div>
 
 
-   <div class="card shadow-sm mb-4">
+   <div class="card privacy-card shadow-sm mb-4">
        <div class="card-body">
-           <h2>10. Changes to This Policy</h2>
+           <h2 class="mb-3">10. Changes to This Policy</h2>
            <p>We may update this Privacy Policy periodically. We will notify you of any material changes through our application or via email.</p>
        </div>
    </div>
