@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 import io
 import logging
 from .strava_integration import StravaIntegration
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -66,14 +67,35 @@ def fix_timestamp(timestamp):
         return timestamp.replace(year=now.year)
     return timestamp
 
+def get_user_timezone():
+    """Get the timezone (always returns Eastern Time)"""
+    return pytz.timezone('America/New_York')
+
+def convert_to_user_timezone(dt):
+    """Convert a datetime to Eastern Time"""
+    if dt is None:
+        return None
+    
+    # Ensure the datetime is timezone-aware
+    if dt.tzinfo is None:
+        dt = pytz.UTC.localize(dt)
+    
+    eastern_tz = pytz.timezone('America/New_York')
+    return dt.astimezone(eastern_tz)
+
+def get_user_local_date():
+    """Get the current date in Eastern Time"""
+    eastern_tz = pytz.timezone('America/New_York')
+    return datetime.datetime.now(eastern_tz).date()
+
 @views.route('/', methods=['GET', 'POST'])
 @login_required
 def home():
     """Home page route - renders the main dashboard"""
     try:
         logger.info(f"User {current_user.username} accessing home page")
-        # Get the user's entries for today
-        today = datetime.date.today()
+        # Get the user's entries for today in their timezone
+        today = get_user_local_date()
         entry = Entry.query.filter_by(
             user_id=current_user.id,
             date=today
@@ -774,12 +796,45 @@ def delete_custom_metric(metric_id):
 @login_required
 def settings():
     strava_available = strava_integration is not None
+    # Get list of common timezones
+    common_timezones = [
+        'America/New_York',
+        'America/Chicago',
+        'America/Denver',
+        'America/Los_Angeles',
+        'America/Phoenix',
+        'America/Anchorage',
+        'Pacific/Honolulu',
+        'America/Puerto_Rico',
+        'Europe/London',
+        'Europe/Paris',
+        'Asia/Tokyo',
+        'Australia/Sydney'
+    ]
     return render_template(
         'settings.html',
         user=current_user,
         strava_connected=current_user.strava_access_token is not None if strava_available else False,
-        strava_available=strava_available
+        strava_available=strava_available,
+        timezones=common_timezones
     )
+
+@views.route('/update_timezone', methods=['POST'])
+@login_required
+def update_timezone():
+    timezone = request.form.get('timezone')
+    if timezone:
+        try:
+            # Validate the timezone
+            pytz.timezone(timezone)
+            current_user.timezone = timezone
+            db.session.commit()
+            flash('Time zone updated successfully!', 'success')
+        except pytz.exceptions.UnknownTimeZoneError:
+            flash('Invalid time zone selected.', 'error')
+    else:
+        flash('Please select a time zone.', 'error')
+    return redirect(url_for('views.settings'))
 
 @views.route('/strava/auth')
 @login_required
@@ -899,9 +954,10 @@ def leaderboard():
     metric = request.args.get('metric', 'running_mileage')
     timeframe = request.args.get('timeframe', 'week')
     
-    today = datetime.date.today()
+    user_tz = get_user_timezone()
+    today = datetime.datetime.now(user_tz).date()
     
-    # Calculate date ranges
+    # Calculate date ranges in user's timezone
     if timeframe == 'day':
         start_date = today
         end_date = today
@@ -919,8 +975,6 @@ def leaderboard():
     logger.info(f"Date range: {start_date} to {end_date}")
     
     leaderboard_data = []
-    
-    # Get all users
     users = User.query.all()
     
     for user in users:
@@ -933,10 +987,16 @@ def leaderboard():
         
         # Get Strava activities if metric is running_mileage
         if metric == 'running_mileage':
+            # Convert dates to datetime with user's timezone
+            start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
+            end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
+            start_datetime = user_tz.localize(start_datetime)
+            end_datetime = user_tz.localize(end_datetime)
+            
             activities = Activity.query.filter(
                 Activity.user_id == user.id,
-                Activity.date >= datetime.datetime.combine(start_date, datetime.time.min),
-                Activity.date <= datetime.datetime.combine(end_date, datetime.time.max)
+                Activity.date >= start_datetime,
+                Activity.date <= end_datetime
             ).all()
         else:
             activities = []
@@ -971,10 +1031,6 @@ def leaderboard():
     # Sort by score descending
     leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
     
-    logger.info("Final leaderboard data:")
-    for entry in leaderboard_data:
-        logger.info(f"{entry['username']}: {entry['score']} {entry['unit']}")
-    
     timeframe_text = {
         'day': 'Today',
         'week': 'This Week',
@@ -982,7 +1038,6 @@ def leaderboard():
         'year': 'This Year'
     }.get(timeframe, 'This Week')
     
-    # Get available metrics for the dropdown
     available_metrics = [
         {'id': 'running_mileage', 'name': 'Running Mileage', 'unit': 'miles'},
         {'id': 'sleep_hours', 'name': 'Sleep Hours', 'unit': 'hours'},
@@ -1014,4 +1069,37 @@ def get_metric_unit(metric):
 def privacy_policy():
     """Privacy Policy page route"""
     return render_template("privacy_policy.html", user=current_user)
+
+def timeago(timestamp):
+    """Convert a timestamp to '... ago' text."""
+    if timestamp is None:
+        return ''
+
+    try:
+        user_tz = get_user_timezone()
+        now = datetime.datetime.now(user_tz)
+        
+        # Convert timestamp to user's timezone
+        if timestamp.tzinfo is None:
+            timestamp = pytz.UTC.localize(timestamp)
+        timestamp = timestamp.astimezone(user_tz)
+
+        diff = now - timestamp
+
+        if diff.days > 365:
+            return timestamp.strftime('%d %b %Y')
+        elif diff.days > 30:
+            months = diff.days // 30
+            return f"{months}mo ago"
+        elif diff.days > 0:
+            return f"{diff.days}d ago"
+        elif diff.seconds > 3600:
+            return f"{diff.seconds // 3600}h ago"
+        elif diff.seconds > 60:
+            return f"{diff.seconds // 60}m ago"
+        else:
+            return "just now"
+    except Exception as e:
+        logger.error(f"Error in timeago filter: {str(e)}", exc_info=True)
+        return ''
 
