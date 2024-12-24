@@ -904,15 +904,19 @@ def leaderboard():
     # Calculate date ranges
     if timeframe == 'day':
         start_date = today
+        end_date = today
     elif timeframe == 'week':
         start_date = today - datetime.timedelta(days=today.weekday())
+        end_date = today
     elif timeframe == 'month':
         start_date = today.replace(day=1)
+        end_date = today
     else:  # year
         start_date = today.replace(month=1, day=1)
+        end_date = today
     
     logger.info(f"Leaderboard request - Metric: {metric}, Timeframe: {timeframe}")
-    logger.info(f"Date range: {start_date} to {today}")
+    logger.info(f"Date range: {start_date} to {end_date}")
     
     leaderboard_data = []
     
@@ -924,7 +928,7 @@ def leaderboard():
         entries = Entry.query.filter(
             Entry.user_id == user.id,
             Entry.date >= start_date,
-            Entry.date <= today
+            Entry.date <= end_date
         ).all()
         
         # Get Strava activities if metric is running_mileage
@@ -932,7 +936,7 @@ def leaderboard():
             activities = Activity.query.filter(
                 Activity.user_id == user.id,
                 Activity.date >= datetime.datetime.combine(start_date, datetime.time.min),
-                Activity.date <= datetime.datetime.combine(today, datetime.time.max)
+                Activity.date <= datetime.datetime.combine(end_date, datetime.time.max)
             ).all()
         else:
             activities = []
