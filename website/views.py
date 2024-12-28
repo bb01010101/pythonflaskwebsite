@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 import io
 import logging
 from .strava_integration import StravaIntegration
+from .myfitnesspal_integration import MyFitnessPalIntegration
 import pytz
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,9 @@ def get_strava_integration():
     return None
 
 strava_integration = get_strava_integration()
+
+# Initialize MyFitnessPal integration
+myfitnesspal_integration = MyFitnessPalIntegration()
 
 # Add some logging to debug the values
 logger.info(f"Strava Client ID: {os.environ.get('STRAVA_CLIENT_ID')}")
@@ -796,27 +800,14 @@ def delete_custom_metric(metric_id):
 @login_required
 def settings():
     strava_available = strava_integration is not None
-    # Get list of common timezones
-    common_timezones = [
-        'America/New_York',
-        'America/Chicago',
-        'America/Denver',
-        'America/Los_Angeles',
-        'America/Phoenix',
-        'America/Anchorage',
-        'Pacific/Honolulu',
-        'America/Puerto_Rico',
-        'Europe/London',
-        'Europe/Paris',
-        'Asia/Tokyo',
-        'Australia/Sydney'
-    ]
+    myfitnesspal_connected = current_user.myfitnesspal_username is not None
     return render_template(
         'settings.html',
         user=current_user,
         strava_connected=current_user.strava_access_token is not None if strava_available else False,
         strava_available=strava_available,
-        timezones=common_timezones
+        myfitnesspal_connected=myfitnesspal_connected,
+        myfitnesspal_last_sync=current_user.myfitnesspal_last_sync
     )
 
 @views.route('/update_timezone', methods=['POST'])
@@ -1102,4 +1093,72 @@ def timeago(timestamp):
     except Exception as e:
         logger.error(f"Error in timeago filter: {str(e)}", exc_info=True)
         return ''
+
+@views.route('/connect_myfitnesspal', methods=['POST'])
+@login_required
+def connect_myfitnesspal():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if not username or not password:
+        flash('Please provide both username and password.', 'error')
+        return redirect(url_for('views.settings'))
+    
+    try:
+        # Try to authenticate with MyFitnessPal
+        if myfitnesspal_integration.authenticate(username, password):
+            # Store credentials
+            current_user.myfitnesspal_username = username
+            current_user.myfitnesspal_password = password
+            db.session.commit()
+            
+            # Sync data immediately
+            if myfitnesspal_integration.sync_data(current_user):
+                current_user.myfitnesspal_last_sync = datetime.datetime.now(datetime.timezone.utc)
+                db.session.commit()
+                flash('Successfully connected to MyFitnessPal and synced data!', 'success')
+            else:
+                flash('Connected to MyFitnessPal but failed to sync data.', 'warning')
+        else:
+            flash('Failed to authenticate with MyFitnessPal. Please check your credentials.', 'error')
+    except Exception as e:
+        logger.error(f"Error connecting to MyFitnessPal: {str(e)}", exc_info=True)
+        flash('An error occurred while connecting to MyFitnessPal.', 'error')
+    
+    return redirect(url_for('views.settings'))
+
+@views.route('/sync_myfitnesspal')
+@login_required
+def sync_myfitnesspal():
+    if not current_user.myfitnesspal_username:
+        flash('Please connect your MyFitnessPal account first.', 'error')
+        return redirect(url_for('views.settings'))
+    
+    try:
+        # Re-authenticate with stored credentials
+        if myfitnesspal_integration.authenticate(current_user.myfitnesspal_username, current_user.myfitnesspal_password):
+            # Sync data
+            if myfitnesspal_integration.sync_data(current_user):
+                current_user.myfitnesspal_last_sync = datetime.datetime.now(datetime.timezone.utc)
+                db.session.commit()
+                flash('Successfully synced MyFitnessPal data!', 'success')
+            else:
+                flash('Failed to sync MyFitnessPal data.', 'error')
+        else:
+            flash('Failed to authenticate with MyFitnessPal. Please reconnect your account.', 'error')
+    except Exception as e:
+        logger.error(f"Error syncing MyFitnessPal data: {str(e)}", exc_info=True)
+        flash('An error occurred while syncing MyFitnessPal data.', 'error')
+    
+    return redirect(url_for('views.settings'))
+
+@views.route('/disconnect_myfitnesspal')
+@login_required
+def disconnect_myfitnesspal():
+    current_user.myfitnesspal_username = None
+    current_user.myfitnesspal_password = None
+    current_user.myfitnesspal_last_sync = None
+    db.session.commit()
+    flash('Disconnected from MyFitnessPal', 'success')
+    return redirect(url_for('views.settings'))
 

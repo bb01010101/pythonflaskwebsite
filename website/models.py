@@ -19,6 +19,9 @@ class User(db.Model, UserMixin):
     strava_refresh_token = db.Column(db.String(150))
     strava_token_expires_at = db.Column(db.DateTime)
     strava_athlete_id = db.Column(db.String(50))
+    myfitnesspal_username = db.Column(db.String(150))
+    myfitnesspal_password = db.Column(db.String(150))
+    myfitnesspal_last_sync = db.Column(db.DateTime)
 
 class CustomMetric(db.Model):
     id = db.Column(db.Integer, primary_key=True)
