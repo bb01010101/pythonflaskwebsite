@@ -800,14 +800,22 @@ def delete_custom_metric(metric_id):
 @login_required
 def settings():
     strava_available = strava_integration is not None
-    myfitnesspal_connected = current_user.myfitnesspal_username is not None
+    
+    # Handle case where MyFitnessPal fields don't exist yet
+    try:
+        myfitnesspal_connected = current_user.myfitnesspal_username is not None
+        myfitnesspal_last_sync = current_user.myfitnesspal_last_sync
+    except:
+        myfitnesspal_connected = False
+        myfitnesspal_last_sync = None
+    
     return render_template(
         'settings.html',
         user=current_user,
         strava_connected=current_user.strava_access_token is not None if strava_available else False,
         strava_available=strava_available,
         myfitnesspal_connected=myfitnesspal_connected,
-        myfitnesspal_last_sync=current_user.myfitnesspal_last_sync
+        myfitnesspal_last_sync=myfitnesspal_last_sync
     )
 
 @views.route('/update_timezone', methods=['POST'])

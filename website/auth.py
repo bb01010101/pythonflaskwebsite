@@ -5,32 +5,49 @@ from . import db
 from flask_login import login_user, login_required, logout_user, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func
+import logging
+
+logger = logging.getLogger(__name__)
 
 auth = Blueprint('auth', __name__)
 
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        login_id = request.form.get('email')  # This will now be either email or username
-        password = request.form.get('password')
+    try:
+        if request.method == 'POST':
+            login_id = request.form.get('email')  # This will now be either email or username
+            password = request.form.get('password')
 
-        # Try to find user by email first, then by username if not found
-        user = User.query.filter_by(email=login_id).first()
-        if not user:
-            user = User.query.filter_by(username=login_id).first()
+            logger.info(f"Login attempt for: {login_id}")
 
-        if user:
-            if check_password_hash(user.password, password):
-                flash('Login successful!', category='success')
-                login_user(user, remember=True)
-                return redirect(url_for('views.home'))
+            # Try to find user by email first, then by username if not found
+            user = User.query.filter_by(email=login_id).first()
+            if not user:
+                user = User.query.filter_by(username=login_id).first()
+
+            if user:
+                try:
+                    if check_password_hash(user.password, password):
+                        login_user(user, remember=True)
+                        logger.info(f"Successful login for user: {user.username}")
+                        flash('Login successful!', category='success')
+                        return redirect(url_for('views.home'))
+                    else:
+                        logger.info(f"Incorrect password for user: {user.username}")
+                        flash('Incorrect password.', category='error')
+                except Exception as e:
+                    logger.error(f"Error checking password: {str(e)}", exc_info=True)
+                    flash('An error occurred during login. Please try again.', category='error')
             else:
-                flash('Incorrect password.', category='error')
-        else:
-            flash('Email or username not found.', category='error')
+                logger.info(f"No user found for login_id: {login_id}")
+                flash('Email or username not found.', category='error')
 
-    return render_template("login.html", user=current_user)
+        return render_template("login.html", user=current_user)
+    except Exception as e:
+        logger.error(f"Unexpected error in login route: {str(e)}", exc_info=True)
+        flash('An unexpected error occurred. Please try again.', category='error')
+        return render_template("login.html", user=current_user)
 
 
 
