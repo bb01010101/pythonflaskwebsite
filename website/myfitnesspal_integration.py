@@ -3,18 +3,36 @@ from datetime import datetime, timedelta
 import logging
 from . import db
 from .models import Entry
+import keyring
+import getpass
 
 logger = logging.getLogger(__name__)
 
 class MyFitnessPalIntegration:
     def __init__(self):
         self.client = None
+        # Ensure keyring backend is available
+        try:
+            keyring.get_keyring()
+            logger.info("Keyring backend initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing keyring: {str(e)}")
 
     def authenticate(self, username, password):
         """Authenticate with MyFitnessPal"""
         try:
+            logger.info(f"Attempting to authenticate with MyFitnessPal for user: {username}")
+            # Store password in keyring
+            keyring.set_password("myfitnesspal", username, password)
             self.client = myfitnesspal.Client(username, password)
+            # Test the connection by trying to get today's data
+            today = datetime.now().date()
+            self.client.get_date(today)
+            logger.info("Successfully authenticated with MyFitnessPal")
             return True
+        except myfitnesspal.keyring_utils.NoStoredPasswordAvailable:
+            logger.error("No stored password available in keyring")
+            return False
         except Exception as e:
             logger.error(f"Error authenticating with MyFitnessPal: {str(e)}", exc_info=True)
             return False
