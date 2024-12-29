@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Create Challenge{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Create New Challenge</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="form-group mb-3">
+                            <label for="name">Challenge Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="description">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="metric_type">Metric Type</label>
+                            <select class="form-control" id="metric_type" name="metric_type" required>
+                                <option value="">Select a metric</option>
+                                <optgroup label="Default Metrics">
+                                    <option value="sleep_hours">Sleep Hours</option>
+                                    <option value="calories">Calories</option>
+                                    <option value="water_intake">Water Intake</option>
+                                    <option value="running_mileage">Running Mileage</option>
+                                    <option value="screen_time">Screen Time</option>
+                                </optgroup>
+                                {% if custom_metrics %}
+                                    <optgroup label="Custom Metrics">
+                                        {% for metric in custom_metrics %}
+                                            <option value="custom" data-metric-id="{{ metric.id }}">{{ metric.name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endif %}
+                            </select>
+                            <input type="hidden" id="metric_id" name="metric_id">
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="start_date">Start Date</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="end_date">End Date</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label>Challenge Type</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_public" id="public" value="true" checked>
+                                <label class="form-check-label" for="public">
+                                    Public (Anyone can join)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_public" id="private" value="false">
+                                <label class="form-check-label" for="private">
+                                    Private (Invite code required)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3" id="invite_code_group" style="display: none;">
+                            <label for="invite_code">Invite Code</label>
+                            <input type="text" class="form-control" id="invite_code" name="invite_code">
+                            <small class="form-text text-muted">Required for private challenges</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Create Challenge</button>
+                        <a href="{{ url_for('views.challenge_home') }}" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Show/hide invite code field based on challenge type
+    document.querySelectorAll('input[name="is_public"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const inviteCodeGroup = document.getElementById('invite_code_group');
+            const inviteCodeInput = document.getElementById('invite_code');
+            if (this.value === 'false') {
+                inviteCodeGroup.style.display = 'block';
+                inviteCodeInput.required = true;
+            } else {
+                inviteCodeGroup.style.display = 'none';
+                inviteCodeInput.required = false;
+            }
+        });
+    });
+
+    // Handle custom metric selection
+    document.getElementById('metric_type').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const metricIdInput = document.getElementById('metric_id');
+        
+        if (selectedOption.value === 'custom') {
+            metricIdInput.value = selectedOption.getAttribute('data-metric-id');
+        } else {
+            metricIdInput.value = '';
+        }
+    });
+</script>
+{% endblock %} 

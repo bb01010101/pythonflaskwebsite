@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Challenges{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Challenges</h1>
+        <a href="{{ url_for('views.challenge_create') }}" class="btn btn-primary">Create Challenge</a>
+    </div>
+
+    <div class="row">
+        <!-- Public Challenges -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Public Challenges</h3>
+                </div>
+                <div class="card-body">
+                    {% if public_challenges %}
+                        {% for challenge in public_challenges %}
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ challenge.name }}</h5>
+                                    <p class="card-text">{{ challenge.description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            {{ challenge.start_date.strftime('%Y-%m-%d') }} to {{ challenge.end_date.strftime('%Y-%m-%d') }}
+                                        </small>
+                                        {% if challenge.id in user_challenges %}
+                                            <a href="{{ url_for('views.challenge_details', challenge_id=challenge.id) }}" class="btn btn-info btn-sm">View Details</a>
+                                        {% else %}
+                                            <form action="{{ url_for('views.challenge_join', challenge_id=challenge.id) }}" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-success btn-sm">Join Challenge</button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No public challenges available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Private Challenges -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Private Challenges</h3>
+                </div>
+                <div class="card-body">
+                    {% if private_challenges %}
+                        {% for challenge in private_challenges %}
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ challenge.name }}</h5>
+                                    <p class="card-text">{{ challenge.description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            {{ challenge.start_date.strftime('%Y-%m-%d') }} to {{ challenge.end_date.strftime('%Y-%m-%d') }}
+                                        </small>
+                                        <a href="{{ url_for('views.challenge_details', challenge_id=challenge.id) }}" class="btn btn-info btn-sm">View Details</a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center">
+                            <p class="text-muted mb-3">No private challenges joined.</p>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Join Private Challenge</h5>
+                                    <form action="#" method="post" class="mt-3">
+                                        <div class="form-group">
+                                            <input type="text" class="form-control" name="invite_code" placeholder="Enter invite code">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary mt-2">Join</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

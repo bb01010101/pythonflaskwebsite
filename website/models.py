@@ -119,6 +119,65 @@ class Activity(db.Model):
     
     user = db.relationship('User', backref=db.backref('activities', lazy=True))
 
+class Challenge(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    metric_type = db.Column(db.String(50), nullable=False)  # 'default' or 'custom'
+    metric_id = db.Column(db.Integer, db.ForeignKey('custom_metric.id'), nullable=True)  # Only for custom metrics
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+    is_public = db.Column(db.Boolean, default=True)
+    invite_code = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    
+    creator = db.relationship('User', backref=db.backref('created_challenges', lazy=True))
+    participants = db.relationship('ChallengeParticipant', backref='challenge', lazy=True)
+
+class ChallengeParticipant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    challenge_id = db.Column(db.Integer, db.ForeignKey('challenge.id'), nullable=False)
+    joined_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    
+    user = db.relationship('User', backref=db.backref('challenge_participations', lazy=True))
+
+    def get_score(self):
+        """Calculate participant's score based on challenge metric type and date range"""
+        total = 0
+        if self.challenge.metric_type == 'default':
+            entries = Entry.query.filter(
+                Entry.user_id == self.user_id,
+                Entry.date >= self.challenge.start_date.date(),
+                Entry.date <= self.challenge.end_date.date()
+            ).all()
+            
+            for entry in entries:
+                if self.challenge.metric_type == 'sleep_hours':
+                    total += entry.sleep_hours
+                elif self.challenge.metric_type == 'calories':
+                    total += entry.calories
+                elif self.challenge.metric_type == 'water_intake':
+                    total += entry.water_intake
+                elif self.challenge.metric_type == 'running_mileage':
+                    total += entry.running_mileage
+                elif self.challenge.metric_type == 'screen_time':
+                    total += entry.screen_time
+        else:
+            # For custom metrics
+            entries = CustomMetricEntry.query.join(Entry).filter(
+                Entry.user_id == self.user_id,
+                Entry.date >= self.challenge.start_date.date(),
+                Entry.date <= self.challenge.end_date.date(),
+                CustomMetricEntry.metric_id == self.challenge.metric_id
+            ).all()
+            
+            for entry in entries:
+                total += entry.value
+                
+        return total
+
 
 
 

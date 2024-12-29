@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
 from flask_login import login_required, current_user
-from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity
+from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity, Challenge, ChallengeParticipant
 from . import db
 import json
 import datetime
@@ -1174,4 +1174,167 @@ def disconnect_myfitnesspal():
     db.session.commit()
     flash('Disconnected from MyFitnessPal', 'success')
     return redirect(url_for('views.settings'))
+
+@views.route('/challenge_home')
+@login_required
+def challenge_home():
+    """Display all public challenges and private challenges the user is part of"""
+    public_challenges = Challenge.query.filter_by(is_public=True).all()
+    private_challenges = Challenge.query.join(ChallengeParticipant).filter(
+        Challenge.is_public == False,
+        ChallengeParticipant.user_id == current_user.id
+    ).all()
+    
+    user_challenges = set([p.challenge_id for p in current_user.challenge_participations])
+    
+    return render_template(
+        "challenge_home.html",
+        public_challenges=public_challenges,
+        private_challenges=private_challenges,
+        user_challenges=user_challenges
+    )
+
+@views.route('/challenge_create', methods=['GET', 'POST'])
+@login_required
+def challenge_create():
+    """Create a new challenge"""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        metric_type = request.form.get('metric_type')
+        metric_id = request.form.get('metric_id')
+        start_date = datetime.datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
+        end_date = datetime.datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
+        is_public = request.form.get('is_public') == 'true'
+        invite_code = request.form.get('invite_code') if not is_public else None
+        
+        if not all([name, description, metric_type, start_date, end_date]):
+            flash('Please fill in all required fields.', category='error')
+            return redirect(url_for('views.challenge_create'))
+        
+        if metric_type == 'custom' and not metric_id:
+            flash('Please select a custom metric.', category='error')
+            return redirect(url_for('views.challenge_create'))
+        
+        if start_date >= end_date:
+            flash('End date must be after start date.', category='error')
+            return redirect(url_for('views.challenge_create'))
+        
+        challenge = Challenge(
+            name=name,
+            description=description,
+            creator_id=current_user.id,
+            metric_type=metric_type,
+            metric_id=metric_id if metric_type == 'custom' else None,
+            start_date=start_date,
+            end_date=end_date,
+            is_public=is_public,
+            invite_code=invite_code
+        )
+        
+        db.session.add(challenge)
+        db.session.commit()
+        
+        # Auto-join creator to the challenge
+        participant = ChallengeParticipant(
+            user_id=current_user.id,
+            challenge_id=challenge.id
+        )
+        db.session.add(participant)
+        db.session.commit()
+        
+        flash('Challenge created successfully!', category='success')
+        return redirect(url_for('views.challenge_details', challenge_id=challenge.id))
+    
+    # GET request - show create form
+    custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
+    return render_template("challenge_create.html", custom_metrics=custom_metrics)
+
+@views.route('/challenge_details/<int:challenge_id>')
+@login_required
+def challenge_details(challenge_id):
+    """Show challenge details and leaderboard"""
+    challenge = Challenge.query.get_or_404(challenge_id)
+    
+    # Check if user has access to private challenge
+    if not challenge.is_public:
+        is_participant = ChallengeParticipant.query.filter_by(
+            user_id=current_user.id,
+            challenge_id=challenge_id
+        ).first() is not None
+        
+        if not is_participant:
+            flash('This is a private challenge. Please enter the invite code to join.', category='error')
+            return redirect(url_for('views.challenge_home'))
+    
+    # Get participants and their scores
+    participants = ChallengeParticipant.query.filter_by(challenge_id=challenge_id).all()
+    leaderboard = []
+    for participant in participants:
+        leaderboard.append({
+            'user': participant.user,
+            'score': participant.get_score()
+        })
+    
+    # Sort leaderboard by score (descending)
+    leaderboard.sort(key=lambda x: x['score'], reverse=True)
+    
+    # Check if current user is participating
+    is_participant = any(p.user_id == current_user.id for p in participants)
+    
+    return render_template(
+        "challenge_details.html",
+        challenge=challenge,
+        leaderboard=leaderboard,
+        is_participant=is_participant
+    )
+
+@views.route('/challenge_join/<int:challenge_id>', methods=['POST'])
+@login_required
+def challenge_join(challenge_id):
+    """Join a challenge"""
+    challenge = Challenge.query.get_or_404(challenge_id)
+    
+    # Check if already participating
+    existing = ChallengeParticipant.query.filter_by(
+        user_id=current_user.id,
+        challenge_id=challenge_id
+    ).first()
+    
+    if existing:
+        flash('You are already participating in this challenge!', category='error')
+        return redirect(url_for('views.challenge_details', challenge_id=challenge_id))
+    
+    # Check invite code for private challenges
+    if not challenge.is_public:
+        invite_code = request.form.get('invite_code')
+        if not invite_code or invite_code != challenge.invite_code:
+            flash('Invalid invite code!', category='error')
+            return redirect(url_for('views.challenge_home'))
+    
+    # Join the challenge
+    participant = ChallengeParticipant(
+        user_id=current_user.id,
+        challenge_id=challenge_id
+    )
+    db.session.add(participant)
+    db.session.commit()
+    
+    flash('Successfully joined the challenge!', category='success')
+    return redirect(url_for('views.challenge_details', challenge_id=challenge_id))
+
+@views.route('/challenge_leave/<int:challenge_id>', methods=['POST'])
+@login_required
+def challenge_leave(challenge_id):
+    """Leave a challenge"""
+    participant = ChallengeParticipant.query.filter_by(
+        user_id=current_user.id,
+        challenge_id=challenge_id
+    ).first_or_404()
+    
+    db.session.delete(participant)
+    db.session.commit()
+    
+    flash('Successfully left the challenge!', category='success')
+    return redirect(url_for('views.challenge_home'))
 

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ challenge.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Challenge Details -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title mb-0">{{ challenge.name }}</h2>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ challenge.description }}</p>
+                    <hr>
+                    <div class="mb-3">
+                        <strong>Metric:</strong>
+                        {% if challenge.metric_type == 'custom' %}
+                            {{ challenge.metric.name }}
+                        {% else %}
+                            {{ challenge.metric_type|replace('_', ' ')|title }}
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Duration:</strong><br>
+                        {{ challenge.start_date.strftime('%Y-%m-%d') }} to {{ challenge.end_date.strftime('%Y-%m-%d') }}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Type:</strong>
+                        {% if challenge.is_public %}
+                            Public Challenge
+                        {% else %}
+                            Private Challenge
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Created by:</strong>
+                        {{ challenge.creator.username }}
+                    </div>
+
+                    {% if not is_participant %}
+                        {% if challenge.is_public %}
+                            <form action="{{ url_for('views.challenge_join', challenge_id=challenge.id) }}" method="post">
+                                <button type="submit" class="btn btn-success">Join Challenge</button>
+                            </form>
+                        {% else %}
+                            <form action="{{ url_for('views.challenge_join', challenge_id=challenge.id) }}" method="post">
+                                <div class="form-group mb-3">
+                                    <label for="invite_code">Invite Code</label>
+                                    <input type="text" class="form-control" id="invite_code" name="invite_code" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Join Challenge</button>
+                            </form>
+                        {% endif %}
+                    {% else %}
+                        <form action="{{ url_for('views.challenge_leave', challenge_id=challenge.id) }}" method="post">
+                            <button type="submit" class="btn btn-danger">Leave Challenge</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Leaderboard</h3>
+                </div>
+                <div class="card-body">
+                    {% if leaderboard %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>User</th>
+                                        <th>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in leaderboard %}
+                                        <tr {% if entry.user.id == current_user.id %}class="table-primary"{% endif %}>
+                                            <td>{{ loop.index }}</td>
+                                            <td>{{ entry.user.username }}</td>
+                                            <td>
+                                                {{ "%.2f"|format(entry.score) }}
+                                                {% if challenge.metric_type == 'custom' %}
+                                                    {{ challenge.metric.unit }}
+                                                {% elif challenge.metric_type == 'sleep_hours' %}
+                                                    hours
+                                                {% elif challenge.metric_type == 'calories' %}
+                                                    cal
+                                                {% elif challenge.metric_type == 'water_intake' %}
+                                                    ml
+                                                {% elif challenge.metric_type == 'running_mileage' %}
+                                                    miles
+                                                {% elif challenge.metric_type == 'screen_time' %}
+                                                    hours
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No participants yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
