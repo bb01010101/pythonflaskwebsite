@@ -4,6 +4,7 @@ import logging
 from . import db
 from .models import Entry
 import requests
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +17,35 @@ class MyFitnessPalIntegration:
         try:
             logger.info(f"Attempting to authenticate with MyFitnessPal using email: {username}")
             
-            # Create client with direct password and use_email_for_username=True
+            # Create a session for maintaining cookies
+            session = requests.Session()
+            
+            # First, try to log in via the web interface
+            login_url = "https://www.myfitnesspal.com/account/login"
+            login_data = {
+                "username": username,
+                "password": password,
+                "remember_me": "true"
+            }
+            
+            # Get the login page first to get any necessary cookies
+            session.get(login_url)
+            
+            # Attempt login
+            response = session.post(login_url, data=login_data)
+            
+            if response.status_code != 200:
+                logger.error(f"Login failed with status code: {response.status_code}")
+                return False
+
+            # Now create the client with the authenticated session
             self.client = myfitnesspal.Client(
                 username=username,
                 password=password,
+                session=session,
                 store_password=False,
-                use_email_for_username=True
+                use_email_for_username=True,
+                legacy_auth=True  # Use legacy authentication
             )
 
             # Test the connection by trying to get today's data
