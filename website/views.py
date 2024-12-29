@@ -1109,7 +1109,7 @@ def connect_myfitnesspal():
     password = request.form.get('password')
     
     if not username or not password:
-        flash('Please provide both username and password.', 'error')
+        flash('Please provide both email and password.', 'error')
         return redirect(url_for('views.settings'))
     
     try:
@@ -1126,12 +1126,14 @@ def connect_myfitnesspal():
                 db.session.commit()
                 flash('Successfully connected to MyFitnessPal and synced data!', 'success')
             else:
-                flash('Connected to MyFitnessPal but failed to sync data.', 'warning')
+                flash('Connected to MyFitnessPal but failed to sync data. Please try syncing manually.', 'warning')
         else:
-            flash('Failed to authenticate with MyFitnessPal. Please check your credentials.', 'error')
+            # Check logs for detailed error message
+            error_msg = "Please make sure you're using the email address and password you use to log in to the MyFitnessPal website."
+            flash(f'Failed to authenticate with MyFitnessPal. {error_msg}', 'error')
     except Exception as e:
         logger.error(f"Error connecting to MyFitnessPal: {str(e)}", exc_info=True)
-        flash('An error occurred while connecting to MyFitnessPal.', 'error')
+        flash(f'An error occurred while connecting to MyFitnessPal: {str(e)}', 'error')
     
     return redirect(url_for('views.settings'))
 
