@@ -3,35 +3,85 @@
 {% block title %}Challenges{% endblock %}
 
 {% block content %}
+<style>
+    .challenge-card {
+        transition: transform 0.2s;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .challenge-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .challenge-card .card-title {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .challenge-card .card-text {
+        color: #666;
+        margin-bottom: 1rem;
+    }
+
+    .challenge-card .text-muted {
+        font-size: 0.9rem;
+    }
+
+    .challenge-card .btn {
+        transition: all 0.2s;
+    }
+
+    .challenge-card .btn:hover {
+        transform: scale(1.05);
+    }
+
+    .section-header {
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Challenges</h1>
-        <a href="{{ url_for('views.challenge_create') }}" class="btn btn-primary">Create Challenge</a>
+        <a href="{{ url_for('views.challenge_create') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Create Challenge
+        </a>
     </div>
 
     <div class="row">
         <!-- Public Challenges -->
         <div class="col-md-6">
             <div class="card mb-4">
-                <div class="card-header">
-                    <h3 class="card-title mb-0">Public Challenges</h3>
+                <div class="card-header section-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-globe me-2"></i>Public Challenges
+                    </h3>
                 </div>
                 <div class="card-body">
                     {% if public_challenges %}
                         {% for challenge in public_challenges %}
-                            <div class="card mb-3">
+                            <div class="card challenge-card mb-3">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ challenge.name }}</h5>
                                     <p class="card-text">{{ challenge.description }}</p>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>
                                             {{ challenge.start_date.strftime('%Y-%m-%d') }} to {{ challenge.end_date.strftime('%Y-%m-%d') }}
                                         </small>
                                         {% if challenge.id in user_challenges %}
-                                            <a href="{{ url_for('views.challenge_details', challenge_id=challenge.id) }}" class="btn btn-info btn-sm">View Details</a>
+                                            <a href="{{ url_for('views.challenge_details', challenge_id=challenge.id) }}" class="btn btn-info btn-sm">
+                                                <i class="fas fa-eye me-1"></i>View Details
+                                            </a>
                                         {% else %}
                                             <form action="{{ url_for('views.challenge_join', challenge_id=challenge.id) }}" method="post" class="d-inline">
-                                                <button type="submit" class="btn btn-success btn-sm">Join Challenge</button>
+                                                <button type="submit" class="btn btn-success btn-sm">
+                                                    <i class="fas fa-plus me-1"></i>Join Challenge
+                                                </button>
                                             </form>
                                         {% endif %}
                                     </div>
@@ -39,7 +89,9 @@
                             </div>
                         {% endfor %}
                     {% else %}
-                        <p class="text-muted">No public challenges available.</p>
+                        <p class="text-muted text-center">
+                            <i class="fas fa-info-circle me-2"></i>No public challenges available.
+                        </p>
                     {% endif %}
                 </div>
             </div>
@@ -48,36 +100,48 @@
         <!-- Private Challenges -->
         <div class="col-md-6">
             <div class="card mb-4">
-                <div class="card-header">
-                    <h3 class="card-title mb-0">Private Challenges</h3>
+                <div class="card-header section-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-lock me-2"></i>Private Challenges
+                    </h3>
                 </div>
                 <div class="card-body">
                     {% if private_challenges %}
                         {% for challenge in private_challenges %}
-                            <div class="card mb-3">
+                            <div class="card challenge-card mb-3">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ challenge.name }}</h5>
                                     <p class="card-text">{{ challenge.description }}</p>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>
                                             {{ challenge.start_date.strftime('%Y-%m-%d') }} to {{ challenge.end_date.strftime('%Y-%m-%d') }}
                                         </small>
-                                        <a href="{{ url_for('views.challenge_details', challenge_id=challenge.id) }}" class="btn btn-info btn-sm">View Details</a>
+                                        <a href="{{ url_for('views.challenge_details', challenge_id=challenge.id) }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-eye me-1"></i>View Details
+                                        </a>
                                     </div>
                                 </div>
                             </div>
                         {% endfor %}
                     {% else %}
                         <div class="text-center">
-                            <p class="text-muted mb-3">No private challenges joined.</p>
-                            <div class="card">
+                            <p class="text-muted mb-3">
+                                <i class="fas fa-info-circle me-2"></i>No private challenges joined.
+                            </p>
+                            <div class="card challenge-card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Join Private Challenge</h5>
-                                    <form action="#" method="post" class="mt-3">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-key me-2"></i>Join Private Challenge
+                                    </h5>
+                                    <form action="{{ url_for('views.challenge_join', challenge_id=0) }}" method="post" class="mt-3">
                                         <div class="form-group">
-                                            <input type="text" class="form-control" name="invite_code" placeholder="Enter invite code">
+                                            <input type="text" class="form-control mb-2" name="challenge_id" placeholder="Enter challenge ID" required>
+                                            <input type="text" class="form-control" name="invite_code" placeholder="Enter invite code" required>
                                         </div>
-                                        <button type="submit" class="btn btn-primary mt-2">Join</button>
+                                        <button type="submit" class="btn btn-primary mt-3">
+                                            <i class="fas fa-sign-in-alt me-2"></i>Join Challenge
+                                        </button>
                                     </form>
                                 </div>
                             </div>

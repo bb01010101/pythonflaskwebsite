@@ -1191,7 +1191,8 @@ def challenge_home():
         "challenge_home.html",
         public_challenges=public_challenges,
         private_challenges=private_challenges,
-        user_challenges=user_challenges
+        user_challenges=user_challenges,
+        user=current_user
     )
 
 @views.route('/challenge_create', methods=['GET', 'POST'])
@@ -1212,12 +1213,45 @@ def challenge_create():
             flash('Please fill in all required fields.', category='error')
             return redirect(url_for('views.challenge_create'))
         
+        if len(name) < 3:
+            flash('Challenge name must be at least 3 characters long.', category='error')
+            return redirect(url_for('views.challenge_create'))
+
+        if len(name) > 150:
+            flash('Challenge name must be less than 150 characters.', category='error')
+            return redirect(url_for('views.challenge_create'))
+
+        if len(description) < 10:
+            flash('Description must be at least 10 characters long.', category='error')
+            return redirect(url_for('views.challenge_create'))
+
         if metric_type == 'custom' and not metric_id:
             flash('Please select a custom metric.', category='error')
             return redirect(url_for('views.challenge_create'))
         
         if start_date >= end_date:
             flash('End date must be after start date.', category='error')
+            return redirect(url_for('views.challenge_create'))
+        
+        # Get current date without time
+        current_date = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if start_date < current_date:
+            flash('Start date cannot be in the past.', category='error')
+            return redirect(url_for('views.challenge_create'))
+
+        # Maximum challenge duration is 1 year
+        max_end_date = start_date + datetime.timedelta(days=365)
+        if end_date > max_end_date:
+            flash('Challenge duration cannot exceed 1 year.', category='error')
+            return redirect(url_for('views.challenge_create'))
+
+        if not is_public and not invite_code:
+            flash('Private challenges require an invite code.', category='error')
+            return redirect(url_for('views.challenge_create'))
+        
+        if not is_public and len(invite_code) < 6:
+            flash('Invite code must be at least 6 characters long.', category='error')
             return redirect(url_for('views.challenge_create'))
         
         challenge = Challenge(
@@ -1243,12 +1277,15 @@ def challenge_create():
         db.session.add(participant)
         db.session.commit()
         
-        flash('Challenge created successfully!', category='success')
+        if is_public:
+            flash('Challenge created successfully!', category='success')
+        else:
+            flash('Private challenge created successfully! Share the Challenge ID and Invite Code with others to let them join.', category='success')
         return redirect(url_for('views.challenge_details', challenge_id=challenge.id))
     
     # GET request - show create form
     custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
-    return render_template("challenge_create.html", custom_metrics=custom_metrics)
+    return render_template("challenge_create.html", custom_metrics=custom_metrics, user=current_user)
 
 @views.route('/challenge_details/<int:challenge_id>')
 @login_required
@@ -1286,13 +1323,22 @@ def challenge_details(challenge_id):
         "challenge_details.html",
         challenge=challenge,
         leaderboard=leaderboard,
-        is_participant=is_participant
+        is_participant=is_participant,
+        user=current_user
     )
 
 @views.route('/challenge_join/<int:challenge_id>', methods=['POST'])
 @login_required
 def challenge_join(challenge_id):
     """Join a challenge"""
+    # If challenge_id is 0, get it from the form
+    if challenge_id == 0:
+        try:
+            challenge_id = int(request.form.get('challenge_id'))
+        except (TypeError, ValueError):
+            flash('Invalid challenge ID!', category='error')
+            return redirect(url_for('views.challenge_home'))
+
     challenge = Challenge.query.get_or_404(challenge_id)
     
     # Check if already participating

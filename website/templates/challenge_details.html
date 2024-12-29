@@ -3,31 +3,97 @@
 {% block title %}{{ challenge.name }}{% endblock %}
 
 {% block content %}
+<style>
+    .challenge-details {
+        transition: transform 0.2s;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .challenge-details:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .challenge-details .card-title {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .challenge-details .card-text {
+        color: #666;
+        margin-bottom: 1rem;
+    }
+
+    .challenge-details .text-muted {
+        font-size: 0.9rem;
+    }
+
+    .challenge-details .btn {
+        transition: all 0.2s;
+    }
+
+    .challenge-details .btn:hover {
+        transform: scale(1.05);
+    }
+
+    .section-header {
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .leaderboard-table {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .leaderboard-table thead th {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+    }
+
+    .leaderboard-table tbody tr:hover {
+        background-color: rgba(64, 224, 208, 0.1);
+    }
+
+    .metric-badge {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+</style>
+
 <div class="container mt-4">
     <div class="row">
         <!-- Challenge Details -->
         <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="card challenge-details mb-4">
+                <div class="card-header section-header">
                     <h2 class="card-title mb-0">{{ challenge.name }}</h2>
                 </div>
                 <div class="card-body">
                     <p class="card-text">{{ challenge.description }}</p>
                     <hr>
                     <div class="mb-3">
-                        <strong>Metric:</strong>
-                        {% if challenge.metric_type == 'custom' %}
-                            {{ challenge.metric.name }}
-                        {% else %}
-                            {{ challenge.metric_type|replace('_', ' ')|title }}
-                        {% endif %}
+                        <strong><i class="fas fa-chart-line me-2"></i>Metric:</strong>
+                        <span class="metric-badge">
+                            {% if challenge.metric_type == 'custom' %}
+                                {{ challenge.metric.name }}
+                            {% else %}
+                                {{ challenge.metric_type|replace('_', ' ')|title }}
+                            {% endif %}
+                        </span>
                     </div>
                     <div class="mb-3">
-                        <strong>Duration:</strong><br>
+                        <strong><i class="fas fa-calendar me-2"></i>Duration:</strong><br>
                         {{ challenge.start_date.strftime('%Y-%m-%d') }} to {{ challenge.end_date.strftime('%Y-%m-%d') }}
                     </div>
                     <div class="mb-3">
-                        <strong>Type:</strong>
+                        <strong><i class="fas fa-{% if challenge.is_public %}globe{% else %}lock{% endif %} me-2"></i>Type:</strong>
                         {% if challenge.is_public %}
                             Public Challenge
                         {% else %}
@@ -35,14 +101,27 @@
                         {% endif %}
                     </div>
                     <div class="mb-3">
-                        <strong>Created by:</strong>
+                        <strong><i class="fas fa-user me-2"></i>Created by:</strong>
                         {{ challenge.creator.username }}
                     </div>
+
+                    {% if not challenge.is_public and challenge.creator_id == current_user.id %}
+                    <div class="mb-3">
+                        <strong><i class="fas fa-hashtag me-2"></i>Challenge ID:</strong>
+                        <span class="text-primary">{{ challenge.id }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-key me-2"></i>Invite Code:</strong>
+                        <span class="text-primary">{{ challenge.invite_code }}</span>
+                    </div>
+                    {% endif %}
 
                     {% if not is_participant %}
                         {% if challenge.is_public %}
                             <form action="{{ url_for('views.challenge_join', challenge_id=challenge.id) }}" method="post">
-                                <button type="submit" class="btn btn-success">Join Challenge</button>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-plus me-2"></i>Join Challenge
+                                </button>
                             </form>
                         {% else %}
                             <form action="{{ url_for('views.challenge_join', challenge_id=challenge.id) }}" method="post">
@@ -50,12 +129,16 @@
                                     <label for="invite_code">Invite Code</label>
                                     <input type="text" class="form-control" id="invite_code" name="invite_code" required>
                                 </div>
-                                <button type="submit" class="btn btn-success">Join Challenge</button>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-plus me-2"></i>Join Challenge
+                                </button>
                             </form>
                         {% endif %}
                     {% else %}
                         <form action="{{ url_for('views.challenge_leave', challenge_id=challenge.id) }}" method="post">
-                            <button type="submit" class="btn btn-danger">Leave Challenge</button>
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="fas fa-sign-out-alt me-2"></i>Leave Challenge
+                            </button>
                         </form>
                     {% endif %}
                 </div>
@@ -64,14 +147,16 @@
 
         <!-- Leaderboard -->
         <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title mb-0">Leaderboard</h3>
+            <div class="card challenge-details">
+                <div class="card-header section-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-trophy me-2"></i>Leaderboard
+                    </h3>
                 </div>
                 <div class="card-body">
                     {% if leaderboard %}
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover leaderboard-table">
                                 <thead>
                                     <tr>
                                         <th>Rank</th>
@@ -82,7 +167,17 @@
                                 <tbody>
                                     {% for entry in leaderboard %}
                                         <tr {% if entry.user.id == current_user.id %}class="table-primary"{% endif %}>
-                                            <td>{{ loop.index }}</td>
+                                            <td>
+                                                {% if loop.index == 1 %}
+                                                    <i class="fas fa-medal text-warning"></i>
+                                                {% elif loop.index == 2 %}
+                                                    <i class="fas fa-medal text-secondary"></i>
+                                                {% elif loop.index == 3 %}
+                                                    <i class="fas fa-medal" style="color: #cd7f32;"></i>
+                                                {% else %}
+                                                    {{ loop.index }}
+                                                {% endif %}
+                                            </td>
                                             <td>{{ entry.user.username }}</td>
                                             <td>
                                                 {{ "%.2f"|format(entry.score) }}
@@ -106,7 +201,9 @@
                             </table>
                         </div>
                     {% else %}
-                        <p class="text-muted text-center">No participants yet.</p>
+                        <p class="text-muted text-center">
+                            <i class="fas fa-info-circle me-2"></i>No participants yet.
+                        </p>
                     {% endif %}
                 </div>
             </div>

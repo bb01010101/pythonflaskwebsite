@@ -3,27 +3,83 @@
 {% block title %}Create Challenge{% endblock %}
 
 {% block content %}
+<style>
+    .challenge-form {
+        transition: transform 0.2s;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .challenge-form:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .challenge-form .card-title {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .challenge-form .form-label {
+        font-weight: 500;
+        color: #555;
+    }
+
+    .challenge-form .form-text {
+        color: #666;
+    }
+
+    .challenge-form .btn {
+        transition: all 0.2s;
+    }
+
+    .challenge-form .btn:hover {
+        transform: scale(1.05);
+    }
+
+    .section-header {
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+</style>
+
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="mb-0">Create New Challenge</h2>
+            <div class="card challenge-form">
+                <div class="card-header section-header">
+                    <h2 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Create New Challenge
+                    </h2>
                 </div>
                 <div class="card-body">
                     <form method="POST">
                         <div class="form-group mb-3">
-                            <label for="name">Challenge Name</label>
+                            <label class="form-label" for="name">
+                                <i class="fas fa-heading me-2"></i>Challenge Name
+                            </label>
                             <input type="text" class="form-control" id="name" name="name" required>
+                            <small class="form-text text-muted">Must be between 3 and 150 characters.</small>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label for="description">Description</label>
+                            <label class="form-label" for="description">
+                                <i class="fas fa-align-left me-2"></i>Description
+                            </label>
                             <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                            <small class="form-text text-muted">Must be at least 10 characters long. Explain what participants need to do.</small>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label for="metric_type">Metric Type</label>
+                            <label class="form-label" for="metric_type">
+                                <i class="fas fa-chart-line me-2"></i>Metric Type
+                            </label>
                             <select class="form-control" id="metric_type" name="metric_type" required>
                                 <option value="">Select a metric</option>
                                 <optgroup label="Default Metrics">
@@ -45,39 +101,55 @@
                         </div>
 
                         <div class="form-group mb-3">
-                            <label for="start_date">Start Date</label>
+                            <label class="form-label" for="start_date">
+                                <i class="fas fa-calendar me-2"></i>Start Date
+                            </label>
                             <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            <small class="form-text text-muted">Must be today or a future date.</small>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label for="end_date">End Date</label>
+                            <label class="form-label" for="end_date">
+                                <i class="fas fa-calendar-check me-2"></i>End Date
+                            </label>
                             <input type="date" class="form-control" id="end_date" name="end_date" required>
+                            <small class="form-text text-muted">Must be after start date and within 1 year.</small>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label>Challenge Type</label>
+                            <label class="form-label">
+                                <i class="fas fa-shield-alt me-2"></i>Challenge Type
+                            </label>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="is_public" id="public" value="true" checked>
                                 <label class="form-check-label" for="public">
-                                    Public (Anyone can join)
+                                    <i class="fas fa-globe me-2"></i>Public (Anyone can join)
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="is_public" id="private" value="false">
                                 <label class="form-check-label" for="private">
-                                    Private (Invite code required)
+                                    <i class="fas fa-lock me-2"></i>Private (Invite code required)
                                 </label>
                             </div>
                         </div>
 
                         <div class="form-group mb-3" id="invite_code_group" style="display: none;">
-                            <label for="invite_code">Invite Code</label>
+                            <label class="form-label" for="invite_code">
+                                <i class="fas fa-key me-2"></i>Invite Code
+                            </label>
                             <input type="text" class="form-control" id="invite_code" name="invite_code">
-                            <small class="form-text text-muted">Required for private challenges</small>
+                            <small class="form-text text-muted">Must be at least 6 characters long. Share this code with people you want to invite.</small>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">Create Challenge</button>
-                        <a href="{{ url_for('views.challenge_home') }}" class="btn btn-secondary">Cancel</a>
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Create Challenge
+                            </button>
+                            <a href="{{ url_for('views.challenge_home') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -110,6 +182,27 @@
             metricIdInput.value = selectedOption.getAttribute('data-metric-id');
         } else {
             metricIdInput.value = '';
+        }
+    });
+
+    // Set minimum dates for start and end date inputs
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').min = today;
+    document.getElementById('end_date').min = today;
+
+    // Update end date minimum when start date changes
+    document.getElementById('start_date').addEventListener('change', function() {
+        const startDate = new Date(this.value);
+        const maxEndDate = new Date(startDate);
+        maxEndDate.setFullYear(maxEndDate.getFullYear() + 1);
+
+        const endDateInput = document.getElementById('end_date');
+        endDateInput.min = this.value;
+        endDateInput.max = maxEndDate.toISOString().split('T')[0];
+
+        // Clear end date if it's before start date
+        if (new Date(endDateInput.value) < startDate) {
+            endDateInput.value = '';
         }
     });
 </script>
