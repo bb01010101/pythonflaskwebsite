@@ -11,14 +11,15 @@ class MyFitnessPalIntegration:
         self.client = None
 
     def authenticate(self, username, password):
-        """Authenticate with MyFitnessPal"""
+        """Authenticate with MyFitnessPal using email"""
         try:
-            logger.info(f"Attempting to authenticate with MyFitnessPal for user: {username}")
-            # Create client with direct password
+            logger.info(f"Attempting to authenticate with MyFitnessPal using email: {username}")
+            # Create client with direct password and use_email_for_username=True
             self.client = myfitnesspal.Client(
                 username=username,
                 password=password,
-                store_password=False
+                store_password=False,
+                use_email_for_username=True  # This tells the client to use email for authentication
             )
             # Test the connection by trying to get today's data
             today = datetime.now().date()
