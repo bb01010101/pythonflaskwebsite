@@ -1128,12 +1128,15 @@ def connect_myfitnesspal():
             else:
                 flash('Connected to MyFitnessPal but failed to sync data. Please try syncing manually.', 'warning')
         else:
-            # Check logs for detailed error message
-            error_msg = "Please make sure you're using the email address and password you use to log in to the MyFitnessPal website."
-            flash(f'Failed to authenticate with MyFitnessPal. {error_msg}', 'error')
+            flash('Failed to authenticate with MyFitnessPal. Please verify your email and password are correct.', 'error')
     except Exception as e:
         logger.error(f"Error connecting to MyFitnessPal: {str(e)}", exc_info=True)
-        flash(f'An error occurred while connecting to MyFitnessPal: {str(e)}', 'error')
+        if 'Invalid username or password' in str(e):
+            flash('Invalid email or password. Please check your credentials and try again.', 'error')
+        elif 'Network error' in str(e):
+            flash('Network error while connecting to MyFitnessPal. Please try again.', 'error')
+        else:
+            flash('An error occurred while connecting to MyFitnessPal. Please try again later.', 'error')
     
     return redirect(url_for('views.settings'))
 

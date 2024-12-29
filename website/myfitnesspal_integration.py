@@ -16,49 +16,25 @@ class MyFitnessPalIntegration:
         try:
             logger.info(f"Attempting to authenticate with MyFitnessPal using email: {username}")
             
-            # First try to verify credentials with a direct login request
-            session = requests.Session()
-            login_url = "https://www.myfitnesspal.com/account/login"
-            
-            # Get CSRF token
-            response = session.get(login_url)
-            if 'csrf-token' in response.text:
-                csrf_token = response.text.split('csrf-token')[1].split('content="')[1].split('"')[0]
-                logger.info(f"Got CSRF token: {csrf_token}")
-            else:
-                csrf_token = None
-                logger.warning("No CSRF token found")
-
             # Create client with direct password and use_email_for_username=True
             self.client = myfitnesspal.Client(
                 username=username,
                 password=password,
                 store_password=False,
-                use_email_for_username=True,
-                session=session
+                use_email_for_username=True
             )
 
             # Test the connection by trying to get today's data
             today = datetime.now().date()
-            try:
-                day_data = self.client.get_date(today)
-                logger.info(f"Successfully got data for today: {day_data}")
-                return True
-            except Exception as e:
-                logger.error(f"Failed to get today's data: {str(e)}")
-                raise
+            day_data = self.client.get_date(today)
+            logger.info(f"Successfully got data for today: {day_data}")
+            return True
 
-        except myfitnesspal.keyring_utils.NoStoredPasswordAvailable:
-            logger.error("No stored password available in keyring")
-            return False
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error during authentication: {str(e)}")
             return False
         except Exception as e:
             logger.error(f"Error authenticating with MyFitnessPal: {str(e)}", exc_info=True)
-            # Log the full error details
-            import traceback
-            logger.error(f"Full traceback: {traceback.format_exc()}")
             return False
 
     def sync_data(self, user):
