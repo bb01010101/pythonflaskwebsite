@@ -1028,7 +1028,10 @@ def leaderboard():
             })
     
     # Sort by score descending
-    leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
+    if metric == 'screen_time':
+        leaderboard_data.sort(key=lambda x: x['score'])  # Ascending for screen time
+    else:
+        leaderboard_data.sort(key=lambda x: x['score'], reverse=True)  # Descending for other metrics
     
     timeframe_text = {
         'day': 'Today',
@@ -1314,7 +1317,10 @@ def challenge_details(challenge_id):
         })
     
     # Sort leaderboard by score (descending)
-    leaderboard.sort(key=lambda x: x['score'], reverse=True)
+    if challenge.metric_type == 'screen_time':
+        leaderboard.sort(key=lambda x: x['score'])  # Ascending for screen time
+    else:
+        leaderboard.sort(key=lambda x: x['score'], reverse=True)  # Descending for other metrics
     
     # Check if current user is participating
     is_participant = any(p.user_id == current_user.id for p in participants)
