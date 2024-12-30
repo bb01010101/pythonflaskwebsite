@@ -1500,3 +1500,24 @@ def challenge_leaderboard(challenge_id):
     
     return jsonify({'leaderboard': leaderboard})
 
+@views.route('/challenge_delete/<int:challenge_id>', methods=['POST'])
+@login_required
+def challenge_delete(challenge_id):
+    """Delete a challenge"""
+    challenge = Challenge.query.get_or_404(challenge_id)
+    
+    # Check if user has permission to delete
+    if challenge.creator_id != current_user.id and current_user.username != 'bri':
+        flash("You don't have permission to delete this challenge.", category="error")
+        return redirect(url_for("views.challenge_details", challenge_id=challenge_id))
+    
+    # Delete all participants first
+    ChallengeParticipant.query.filter_by(challenge_id=challenge_id).delete()
+    
+    # Delete the challenge
+    db.session.delete(challenge)
+    db.session.commit()
+    
+    flash("Challenge deleted successfully.", category="success")
+    return redirect(url_for("views.challenge_home"))
+
