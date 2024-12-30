@@ -90,7 +90,7 @@
                     </div>
                     <div class="mb-3">
                         <strong><i class="fas fa-calendar me-2"></i>Duration:</strong><br>
-                        {{ challenge.start_date.strftime('%Y-%m-%d') }} to {{ challenge.end_date.strftime('%Y-%m-%d') }}
+                        {{ challenge.start_date.strftime('%b %d, %Y') }} to {{ challenge.end_date.strftime('%b %d, %Y') }}
                     </div>
                     <div class="mb-3">
                         <strong><i class="fas fa-{% if challenge.is_public %}globe{% else %}lock{% endif %} me-2"></i>Type:</strong>
