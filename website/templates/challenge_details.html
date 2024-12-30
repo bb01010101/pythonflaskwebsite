@@ -154,6 +154,24 @@
                     </h3>
                 </div>
                 <div class="card-body">
+                    <!-- Progress Bar -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">Challenge Progress</span>
+                            <span class="text-muted" id="progressText"></span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-success" id="challengeProgress" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Timeframe Toggle -->
+                    <div class="btn-group mb-4 w-100">
+                        <button type="button" class="btn btn-outline-primary active" data-timeframe="total">Total</button>
+                        <button type="button" class="btn btn-outline-primary" data-timeframe="week">This Week</button>
+                        <button type="button" class="btn btn-outline-primary" data-timeframe="today">Today</button>
+                    </div>
+
                     {% if leaderboard %}
                         <div class="table-responsive">
                             <table class="table table-hover leaderboard-table">
@@ -210,4 +228,82 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Calculate and update progress bar
+    function updateProgress() {
+        const startDate = new Date('{{ challenge.start_date.strftime("%Y-%m-%d") }}');
+        const endDate = new Date('{{ challenge.end_date.strftime("%Y-%m-%d") }}');
+        const currentDate = new Date();
+        
+        const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+        const daysElapsed = (currentDate - startDate) / (1000 * 60 * 60 * 24);
+        const daysRemaining = (endDate - currentDate) / (1000 * 60 * 60 * 24);
+        
+        let progress = (daysElapsed / totalDays) * 100;
+        progress = Math.max(0, Math.min(100, progress)); // Clamp between 0 and 100
+        
+        document.getElementById('challengeProgress').style.width = progress + '%';
+        
+        if (currentDate < startDate) {
+            document.getElementById('progressText').textContent = 'Starting in ' + Math.ceil(-daysElapsed) + ' days';
+        } else if (currentDate > endDate) {
+            document.getElementById('progressText').textContent = 'Challenge ended';
+        } else {
+            document.getElementById('progressText').textContent = Math.ceil(daysRemaining) + ' days remaining';
+        }
+    }
+
+    // Handle timeframe toggle
+    document.querySelectorAll('[data-timeframe]').forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            document.querySelectorAll('[data-timeframe]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            this.classList.add('active');
+
+            // Get leaderboard data for selected timeframe
+            const timeframe = this.getAttribute('data-timeframe');
+            fetch(`{{ url_for('views.challenge_leaderboard', challenge_id=challenge.id) }}?timeframe=${timeframe}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.querySelector('.leaderboard-table tbody');
+                    tbody.innerHTML = data.leaderboard.map((entry, index) => `
+                        <tr ${entry.user.id == {{ current_user.id }} ? 'class="table-primary"' : ''}>
+                            <td>
+                                ${index + 1 <= 3 ? `
+                                    <i class="fas fa-medal ${
+                                        index + 1 === 1 ? 'text-warning' :
+                                        index + 1 === 2 ? 'text-secondary' :
+                                        'text-bronze'
+                                    }"></i>
+                                ` : index + 1}
+                            </td>
+                            <td>${entry.user.username}</td>
+                            <td>
+                                ${entry.score.toFixed(2)}
+                                {% if challenge.metric_type == 'custom' %}
+                                    {{ challenge.metric.unit }}
+                                {% elif challenge.metric_type == 'sleep_hours' %}
+                                    hours
+                                {% elif challenge.metric_type == 'calories' %}
+                                    cal
+                                {% elif challenge.metric_type == 'water_intake' %}
+                                    ml
+                                {% elif challenge.metric_type == 'running_mileage' %}
+                                    miles
+                                {% elif challenge.metric_type == 'screen_time' %}
+                                    hours
+                                {% endif %}
+                            </td>
+                        </tr>
+                    `).join('');
+                });
+        });
+    });
+
+    // Initialize progress bar
+    updateProgress();
+</script>
 {% endblock %} 

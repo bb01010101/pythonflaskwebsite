@@ -1307,16 +1307,54 @@ def challenge_details(challenge_id):
             flash('This is a private challenge. Please enter the invite code to join.', category='error')
             return redirect(url_for('views.challenge_home'))
     
+    # Get current date in user's timezone
+    user_tz = get_user_timezone()
+    today = datetime.datetime.now(user_tz).date()
+    
+    # Get date range for total timeframe
+    start_date = challenge.start_date.date()
+    end_date = min(challenge.end_date.date(), today)
+    
     # Get participants and their scores
     participants = ChallengeParticipant.query.filter_by(challenge_id=challenge_id).all()
     leaderboard = []
     for participant in participants:
+        total = 0
+        if challenge.metric_type == 'custom':
+            entries = CustomMetricEntry.query.join(Entry).filter(
+                Entry.user_id == participant.user_id,
+                Entry.date >= start_date,
+                Entry.date <= end_date,
+                CustomMetricEntry.metric_id == challenge.metric_id
+            ).all()
+            
+            for entry in entries:
+                total += entry.value
+        else:
+            entries = Entry.query.filter(
+                Entry.user_id == participant.user_id,
+                Entry.date >= start_date,
+                Entry.date <= end_date
+            ).all()
+            
+            for entry in entries:
+                if challenge.metric_type == 'sleep_hours':
+                    total += entry.sleep_hours or 0
+                elif challenge.metric_type == 'calories':
+                    total += entry.calories or 0
+                elif challenge.metric_type == 'water_intake':
+                    total += entry.water_intake or 0
+                elif challenge.metric_type == 'running_mileage':
+                    total += entry.running_mileage or 0
+                elif challenge.metric_type == 'screen_time':
+                    total += entry.screen_time or 0
+        
         leaderboard.append({
             'user': participant.user,
-            'score': participant.get_score()
+            'score': total
         })
     
-    # Sort leaderboard by score (descending)
+    # Sort leaderboard
     if challenge.metric_type == 'screen_time':
         leaderboard.sort(key=lambda x: x['score'])  # Ascending for screen time
     else:
@@ -1389,4 +1427,76 @@ def challenge_leave(challenge_id):
     
     flash('Successfully left the challenge!', category='success')
     return redirect(url_for('views.challenge_home'))
+
+@views.route('/challenge_leaderboard/<int:challenge_id>')
+@login_required
+def challenge_leaderboard(challenge_id):
+    """Get challenge leaderboard data for a specific timeframe"""
+    challenge = Challenge.query.get_or_404(challenge_id)
+    timeframe = request.args.get('timeframe', 'total')
+    
+    # Get current date in user's timezone
+    user_tz = get_user_timezone()
+    today = datetime.datetime.now(user_tz).date()
+    
+    # Calculate date range based on timeframe
+    if timeframe == 'today':
+        start_date = today
+        end_date = today
+    elif timeframe == 'week':
+        start_date = today - datetime.timedelta(days=today.weekday())
+        end_date = today
+    else:  # total
+        start_date = challenge.start_date.date()
+        end_date = min(challenge.end_date.date(), today)
+    
+    # Get participants and their scores for the selected timeframe
+    participants = ChallengeParticipant.query.filter_by(challenge_id=challenge_id).all()
+    leaderboard = []
+    for participant in participants:
+        total = 0
+        if challenge.metric_type == 'custom':
+            entries = CustomMetricEntry.query.join(Entry).filter(
+                Entry.user_id == participant.user_id,
+                Entry.date >= start_date,
+                Entry.date <= end_date,
+                CustomMetricEntry.metric_id == challenge.metric_id
+            ).all()
+            
+            for entry in entries:
+                total += entry.value
+        else:
+            entries = Entry.query.filter(
+                Entry.user_id == participant.user_id,
+                Entry.date >= start_date,
+                Entry.date <= end_date
+            ).all()
+            
+            for entry in entries:
+                if challenge.metric_type == 'sleep_hours':
+                    total += entry.sleep_hours or 0
+                elif challenge.metric_type == 'calories':
+                    total += entry.calories or 0
+                elif challenge.metric_type == 'water_intake':
+                    total += entry.water_intake or 0
+                elif challenge.metric_type == 'running_mileage':
+                    total += entry.running_mileage or 0
+                elif challenge.metric_type == 'screen_time':
+                    total += entry.screen_time or 0
+        
+        leaderboard.append({
+            'user': {
+                'id': participant.user.id,
+                'username': participant.user.username
+            },
+            'score': total
+        })
+    
+    # Sort leaderboard
+    if challenge.metric_type == 'screen_time':
+        leaderboard.sort(key=lambda x: x['score'])  # Ascending for screen time
+    else:
+        leaderboard.sort(key=lambda x: x['score'], reverse=True)  # Descending for other metrics
+    
+    return jsonify({'leaderboard': leaderboard})
 
