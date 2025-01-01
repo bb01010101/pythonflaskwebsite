@@ -12,3 +12,4 @@ requests==2.31.0
 pytz==2023.3
 myfitnesspal==2.0.1
 keyring==24.3.0
+PyJWT==2.8.0

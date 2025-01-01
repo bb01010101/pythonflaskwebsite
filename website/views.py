@@ -11,6 +11,7 @@ import logging
 from .strava_integration import StravaIntegration
 from .myfitnesspal_integration import MyFitnessPalIntegration
 import pytz
+import jwt
 
 logger = logging.getLogger(__name__)
 
@@ -1403,6 +1404,26 @@ def challenge_join(challenge_id):
         flash('You are already participating in this challenge!', category='error')
         return redirect(url_for('views.challenge_details', challenge_id=challenge_id))
     
+    # Check if user has an invite link token
+    invite_token = request.args.get('invite_token')
+    if invite_token:
+        try:
+            # Verify the invite token
+            data = jwt.decode(invite_token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            if data['challenge_id'] == challenge_id:
+                # Valid invite token, skip invite code check
+                participant = ChallengeParticipant(
+                    user_id=current_user.id,
+                    challenge_id=challenge_id
+                )
+                db.session.add(participant)
+                db.session.commit()
+                flash('Successfully joined the challenge!', category='success')
+                return redirect(url_for('views.challenge_details', challenge_id=challenge_id))
+        except:
+            # Invalid or expired token
+            pass
+    
     # Check invite code for private challenges
     if not challenge.is_public:
         invite_code = request.form.get('invite_code')
@@ -1420,6 +1441,34 @@ def challenge_join(challenge_id):
     
     flash('Successfully joined the challenge!', category='success')
     return redirect(url_for('views.challenge_details', challenge_id=challenge_id))
+
+@views.route('/challenge/invite/<int:challenge_id>')
+@login_required
+def generate_invite_link(challenge_id):
+    """Generate an invite link for a challenge"""
+    challenge = Challenge.query.get_or_404(challenge_id)
+    
+    # Check if user is the creator or admin
+    if challenge.creator_id != current_user.id and current_user.username != 'bri':
+        flash('You do not have permission to generate invite links for this challenge.', category='error')
+        return redirect(url_for('views.challenge_details', challenge_id=challenge_id))
+    
+    # Generate a JWT token for the invite
+    token = jwt.encode(
+        {
+            'challenge_id': challenge_id,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)  # Token expires in 7 days
+        },
+        current_app.config['SECRET_KEY'],
+        algorithm='HS256'
+    )
+    
+    # Generate the full invite URL
+    invite_url = url_for('views.challenge_details', challenge_id=challenge_id, invite_token=token, _external=True)
+    
+    return jsonify({
+        'invite_url': invite_url
+    })
 
 @views.route('/challenge_leave/<int:challenge_id>', methods=['POST'])
 @login_required
