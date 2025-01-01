@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h2>Connect Accounts</h2>
+    
+    <!-- Strava Integration Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Strava Integration</h5>
+            {% if not strava_available %}
+                <div class="alert alert-warning">
+                    Strava integration is currently unavailable. Please try again later.
+                </div>
+            {% elif not strava_connected %}
+                <p>Connect your Strava account to automatically sync your activities.</p>
+                <a href="{{ url_for('views.strava_auth') }}" class="btn" style="background-color: #FC4C02; color: white;">
+                    <i class="fab fa-strava"></i> Connect to Strava
+                </a>
+            {% else %}
+                <p class="text-success">
+                    <i class="fas fa-check-circle"></i> Connected to Strava
+                </p>
+                <div class="btn-group">
+                    <a href="{{ url_for('views.strava_sync') }}" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Sync Activities
+                    </a>
+                    <a href="{{ url_for('views.disconnect_strava') }}" class="btn btn-outline-danger">
+                        Disconnect Strava
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- MyFitnessPal Integration Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">MyFitnessPal Integration</h5>
+            {% if not myfitnesspal_connected %}
+                <p>Connect your MyFitnessPal account to automatically sync your nutrition data.</p>
+                <div class="mb-3">
+                    <a href="https://www.myfitnesspal.com/account/login" target="_blank" class="btn" style="background-color: #0066EE; color: white;">
+                        <i class="fas fa-utensils"></i> Log in to MyFitnessPal
+                    </a>
+                </div>
+                <form action="{{ url_for('views.connect_myfitnesspal') }}" method="POST" class="mt-3">
+                    <p class="text-muted small">After logging in, enter your MyFitnessPal credentials below to enable syncing:</p>
+                    <div class="mb-3">
+                        <label for="mfp_username" class="form-label">MyFitnessPal Email Address</label>
+                        <input type="email" class="form-control" id="mfp_username" name="username" required placeholder="Enter the email you use for MyFitnessPal">
+                    </div>
+                    <div class="mb-3">
+                        <label for="mfp_password" class="form-label">MyFitnessPal Password</label>
+                        <input type="password" class="form-control" id="mfp_password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-link"></i> Enable Sync
+                    </button>
+                </form>
+            {% else %}
+                <p class="text-success">
+                    <i class="fas fa-check-circle"></i> Connected to MyFitnessPal
+                </p>
+                <div class="btn-group">
+                    <a href="{{ url_for('views.sync_myfitnesspal') }}" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Sync Nutrition Data
+                    </a>
+                    <a href="{{ url_for('views.disconnect_myfitnesspal') }}" class="btn btn-outline-danger">
+                        Disconnect MyFitnessPal
+                    </a>
+                </div>
+                {% if myfitnesspal_last_sync %}
+                    <p class="text-muted mt-2">
+                        <small>Last synced: {{ myfitnesspal_last_sync|timeago }}</small>
+                    </p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
