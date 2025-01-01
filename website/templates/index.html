@@ -77,6 +77,21 @@
         </div>
     </div>
 
+    <!-- Challenges Button Row -->
+    <div class="row mt-4">
+        <div class="col-md-6 mx-auto">
+            <a href="{{ url_for('views.challenge_home') }}" class="card-link">
+                <div class="card feature-card teal-card challenges-card">
+                    <div class="card-body text-center py-4">
+                        <i class="fas fa-flag-checkered feature-icon" style="font-size: 2.5rem;"></i>
+                        <h3 class="card-title mt-2" style="font-size: 1.5rem;">Challenges</h3>
+                        <p class="card-text">Join and compete in fitness challenges</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
     {% if not user.is_authenticated %}
     <div class="row mt-4">
         <div class="col-md-8 mx-auto text-center">
@@ -211,6 +226,14 @@
         color: white;
     }
     .rose-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
+    .teal-card {
+        background-color: #40E0D0;
+        color: white;
+    }
+    .teal-card .card-text {
         color: rgba(255,255,255,0.9);
     }
 </style>
