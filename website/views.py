@@ -819,6 +819,12 @@ def settings():
         myfitnesspal_last_sync=myfitnesspal_last_sync
     )
 
+@views.route('/settings-mfp', methods=['GET'])
+@login_required
+def settings_mfp():
+    """Display MyFitnessPal settings page"""
+    return render_template('settings-mfp.html', user=current_user)
+
 @views.route('/update_timezone', methods=['POST'])
 @login_required
 def update_timezone():
