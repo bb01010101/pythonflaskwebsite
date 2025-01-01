@@ -57,8 +57,46 @@ class StravaIntegration:
             logger.error(f"Error exchanging code for token: {str(e)}", exc_info=True)
             raise
 
+    def refresh_token(self, refresh_token):
+        """Refresh an expired access token using the refresh token."""
+        logger.info("Refreshing Strava access token")
+        try:
+            response = self.client.refresh_access_token(
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                refresh_token=refresh_token
+            )
+            
+            # Convert response to dictionary if it isn't already
+            if not isinstance(response, dict):
+                response = {
+                    'access_token': response.access_token,
+                    'refresh_token': response.refresh_token,
+                    'expires_at': response.expires_at
+                }
+            
+            logger.info("Successfully refreshed access token")
+            return response
+        except Exception as e:
+            logger.error(f"Error refreshing token: {str(e)}", exc_info=True)
+            raise
+
     def sync_activities(self, user):
         try:
+            # Check if token needs refresh
+            if user.strava_token_expires_at and user.strava_token_expires_at <= datetime.now():
+                logger.info("Access token expired, attempting to refresh")
+                try:
+                    new_tokens = self.refresh_token(user.strava_refresh_token)
+                    user.strava_access_token = new_tokens['access_token']
+                    user.strava_refresh_token = new_tokens['refresh_token']
+                    user.strava_token_expires_at = datetime.fromtimestamp(new_tokens['expires_at'])
+                    db.session.commit()
+                    logger.info("Successfully refreshed and updated tokens")
+                except Exception as e:
+                    logger.error(f"Failed to refresh token: {str(e)}")
+                    return False
+
             self.client.access_token = user.strava_access_token
             one_month_ago = datetime.now() - timedelta(days=30)
             

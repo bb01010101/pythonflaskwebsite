@@ -917,11 +917,19 @@ def strava_sync():
         return redirect(url_for('views.settings'))
         
     try:
+        # Token refresh is now handled inside sync_activities
         success = strava_integration.sync_activities(current_user)
         if success:
             flash('Successfully synced Strava activities!', 'success')
         else:
-            flash('Failed to sync Strava activities. Please try again.', 'error')
+            # If sync failed, it might be due to an invalid refresh token
+            # Clear the tokens and ask user to reconnect
+            current_user.strava_access_token = None
+            current_user.strava_refresh_token = None
+            current_user.strava_token_expires_at = None
+            current_user.strava_athlete_id = None
+            db.session.commit()
+            flash('Failed to sync Strava activities. Please reconnect your account.', 'error')
     except Exception as e:
         logger.error(f"Error syncing Strava activities: {str(e)}", exc_info=True)
         flash('Error syncing activities. Please try again.', 'error')
