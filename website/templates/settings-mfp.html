@@ -12,37 +12,7 @@
         {% endif %}
     {% endwith %}
 
-    <h2>Connect Accounts</h2>
     
-    <!-- Strava Integration Card -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Strava Integration</h5>
-            {% if not strava_available %}
-                <div class="alert alert-warning">
-                    Strava integration is currently unavailable. Please try again later.
-                </div>
-            {% elif not strava_connected %}
-                <p>Connect your Strava account to automatically sync your activities.</p>
-                <a href="{{ url_for('views.strava_auth') }}" class="btn" style="background-color: #FC4C02; color: white;">
-                    <i class="fab fa-strava"></i> Connect to Strava
-                </a>
-            {% else %}
-                <p class="text-success">
-                    <i class="fas fa-check-circle"></i> Connected to Strava
-                </p>
-                <div class="btn-group">
-                    <a href="{{ url_for('views.strava_sync') }}" class="btn btn-primary">
-                        <i class="fas fa-sync"></i> Sync Activities
-                    </a>
-                    <a href="{{ url_for('views.disconnect_strava') }}" class="btn btn-outline-danger">
-                        Disconnect Strava
-                    </a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
     <!-- MyFitnessPal Integration Card -->
     <div class="card mb-4">
         <div class="card-body">
