@@ -93,39 +93,40 @@ def get_user_local_date():
     eastern_tz = pytz.timezone('America/New_York')
     return datetime.datetime.now(eastern_tz).date()
 
-@views.route('/', methods=['GET', 'POST'])
-@login_required
+@views.route('/')
 def home():
-    """Home page route - renders the main dashboard"""
-    try:
-        logger.info(f"User {current_user.username} accessing home page")
-        # Get the user's entries for today in their timezone
-        today = get_user_local_date()
-        entry = Entry.query.filter_by(
-            user_id=current_user.id,
-            date=today
-        ).first()
-        
-        # Get user's metric preferences
-        metric_preferences = MetricPreference.query.filter_by(
-            user_id=current_user.id,
-            is_active=True
-        ).order_by(MetricPreference.priority).all()
-        
-        # Get custom metrics
-        custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
-        
-        return render_template(
-            "index.html",
-            user=current_user,
-            today_entry=entry,
-            metric_preferences=metric_preferences,
-            custom_metrics=custom_metrics
-        )
-    except Exception as e:
-        logger.error(f"Error in home route: {str(e)}", exc_info=True)
-        flash('An error occurred while loading the dashboard. Please try again.', category='error')
-        return render_template("index.html", user=current_user)
+    """Home page route"""
+    if current_user.is_authenticated:
+        try:
+            logger.info(f"User {current_user.username} accessing home page")
+            # Get the user's entries for today in their timezone
+            today = get_user_local_date()
+            entry = Entry.query.filter_by(
+                user_id=current_user.id,
+                date=today
+            ).first()
+            
+            # Get user's metric preferences
+            metric_preferences = MetricPreference.query.filter_by(
+                user_id=current_user.id,
+                is_active=True
+            ).order_by(MetricPreference.priority).all()
+            
+            # Get custom metrics
+            custom_metrics = CustomMetric.query.filter_by(is_approved=True).all()
+            
+            return render_template(
+                "index.html",
+                user=current_user,
+                today_entry=entry,
+                metric_preferences=metric_preferences,
+                custom_metrics=custom_metrics
+            )
+        except Exception as e:
+            logger.error(f"Error in home route: {str(e)}", exc_info=True)
+            flash('An error occurred while loading the dashboard. Please try again.', category='error')
+            return render_template("index.html", user=current_user)
+    return render_template("landing.html", user=current_user)
 
 @views.route('/view_charts', methods=['GET', 'POST'])
 @login_required
@@ -1082,9 +1083,8 @@ def get_metric_unit(metric):
     }
     return units.get(metric, '')
 
-@views.route('/privacy_policy')
+@views.route('/privacy-policy')
 def privacy_policy():
-    """Privacy Policy page route"""
     return render_template("privacy_policy.html", user=current_user)
 
 def timeago(timestamp):

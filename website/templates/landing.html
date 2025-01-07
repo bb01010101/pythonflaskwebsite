@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}LyfMax - Track Your Life Journey{% endblock %}
+
+{% block content %}
+<style>
+    .feature-section {
+        padding: 4rem 0;
+    }
+
+    .hero-section {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+        color: white;
+        padding: 6rem 0;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.5rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        height: 100%;
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .feature-icon {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .feature-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #333;
+    }
+
+    .feature-description {
+        color: #666;
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    .cta-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 4rem 0;
+        text-align: center;
+    }
+
+    .cta-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        color: #333;
+    }
+
+    .btn-cta {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        border-radius: 2rem;
+        border: none;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0.5rem;
+    }
+
+    .btn-cta:hover {
+        background-color: var(--primary-hover);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .dark-mode .feature-card {
+        background: var(--card-bg-dark);
+    }
+
+    .dark-mode .feature-title {
+        color: var(--text-light);
+    }
+
+    .dark-mode .feature-description {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .dark-mode .cta-section {
+        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    }
+
+    .dark-mode .cta-title {
+        color: var(--text-light);
+    }
+</style>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <h1 class="hero-title">Max your Lyf with LyfMax</h1>
+        <p class="hero-subtitle">Your all-in-one platform for health, fitness, and personal growth tracking</p>
+        <div>
+            <a href="{{ url_for('auth.sign_up') }}" class="btn-cta">
+                <i class="fas fa-user-plus me-2"></i>Get Started
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="btn-cta" style="background-color: transparent; border: 2px solid white;">
+                <i class="fas fa-sign-in-alt me-2"></i>Login
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="feature-section">
+    <div class="container">
+        <div class="row g-4">
+
+            <!-- Progress Tracking -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="fas fa-chart-line feature-icon"></i>
+                    <h3 class="feature-title">Progress Analytics</h3>
+                    <p class="feature-description">
+                        Visualize your progress with detailed charts and analytics. Track trends and identify areas for improvement.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Activity Tracking -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="fas fa-running feature-icon"></i>
+                    <h3 class="feature-title">Activity Tracking</h3>
+                    <p class="feature-description">
+                        Track your daily activities such as running, biking, and swimming and optimize your recovery through sleep and hydration. Seamlessly integrate with Garmin, COROS, and Strava for comprehensive fitness and recover monitoring.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Nutrition Monitoring -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="fas fa-utensils feature-icon"></i>
+                    <h3 class="feature-title">Nutrition Monitoring</h3>
+                    <p class="feature-description">
+                        Connect with MyFitnessPal to track your nutrition and hydrationgoals. Monitor calories, macros, and maintain a balanced diet effortlessly.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Challenges -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="fas fa-flag-checkered feature-icon"></i>
+                    <h3 class="feature-title">Fitness Challenges</h3>
+                    <p class="feature-description">
+                        Create and join challenges to stay motivated. Compete with friends or join public challenges to push your limits.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Community -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="fas fa-users feature-icon"></i>
+                    <h3 class="feature-title">Community Feed</h3>
+                    <p class="feature-description">
+                        Share your achievements, post updates, and interact with a community of like-minded individuals on your fitness journey.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Leaderboards -->
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="fas fa-trophy feature-icon"></i>
+                    <h3 class="feature-title">Leaderboards</h3>
+                    <p class="feature-description">
+                        Compete on global leaderboards across different metrics. See how you stack up against others and stay motivated.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <h2 class="cta-title">Start Your Journey Today</h2>
+        <p class="lead mb-4">Join thousands of users who are already tracking their way to a better life</p>
+        <a href="{{ url_for('auth.sign_up') }}" class="btn-cta">
+            <i class="fas fa-rocket me-2"></i>Begin Your Journey
+        </a>
+    </div>
+</section>
+{% endblock %} 
