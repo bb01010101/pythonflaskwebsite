@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from flask import current_app, url_for
 import requests
 import os
+from urllib.parse import urlencode
 from . import db
 from .models import Activity, Entry
 
