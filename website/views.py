@@ -12,6 +12,7 @@ from .strava_integration import StravaIntegration
 from .myfitnesspal_integration import MyFitnessPalIntegration
 import pytz
 import jwt
+from .garmin_integration import GarminIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,21 @@ strava_integration = get_strava_integration()
 
 # Initialize MyFitnessPal integration
 myfitnesspal_integration = MyFitnessPalIntegration()
+
+# Initialize Garmin integration
+garmin_client_id = os.environ.get('GARMIN_CLIENT_ID')
+garmin_client_secret = os.environ.get('GARMIN_CLIENT_SECRET')
+
+logger.info(f"Garmin Client ID: {garmin_client_id}")
+if garmin_client_secret:
+    logger.info("Garmin Client Secret is set")
+else:
+    logger.warning("Garmin Client Secret is not set")
+
+garmin_integration = GarminIntegration(
+    client_id=garmin_client_id,
+    client_secret=garmin_client_secret
+)
 
 # Add some logging to debug the values
 logger.info(f"Strava Client ID: {os.environ.get('STRAVA_CLIENT_ID')}")
@@ -816,6 +832,8 @@ def settings():
         user=current_user,
         strava_connected=current_user.strava_access_token is not None if strava_available else False,
         strava_available=strava_available,
+        garmin_connected=current_user.garmin_access_token is not None,
+        garmin_last_sync=current_user.garmin_last_sync,
         myfitnesspal_connected=myfitnesspal_connected,
         myfitnesspal_last_sync=myfitnesspal_last_sync
     )
@@ -1583,4 +1601,143 @@ def challenge_delete(challenge_id):
     
     flash("Challenge deleted successfully.", category="success")
     return redirect(url_for("views.challenge_home"))
+
+@views.route('/connect_garmin', methods=['POST'])
+@login_required
+def connect_garmin():
+    """Connect Garmin account using email/password"""
+    email = request.form.get('email')
+    password = request.form.get('password')
+    
+    if not email or not password:
+        flash('Please provide both email and password.', 'error')
+        return redirect(url_for('views.settings'))
+    
+    try:
+        # Try to authenticate with Garmin
+        if garmin_integration.authenticate(email, password):
+            # Store credentials
+            current_user.garmin_email = email
+            current_user.garmin_password = password
+            db.session.commit()
+            
+            # Sync data immediately
+            success_activities = garmin_integration.sync_activities(current_user)
+            success_sleep = garmin_integration.sync_sleep_data(current_user)
+            
+            if success_activities and success_sleep:
+                current_user.garmin_last_sync = datetime.datetime.now(datetime.timezone.utc)
+                db.session.commit()
+                flash('Successfully connected to Garmin and synced data!', 'success')
+            else:
+                flash('Connected to Garmin but failed to sync some data. Please try syncing manually.', 'warning')
+        else:
+            flash('Could not connect to Garmin. Please check your credentials.', 'error')
+    except Exception as e:
+        logger.error(f"Error connecting to Garmin: {str(e)}", exc_info=True)
+        flash('Could not connect to Garmin. Please try again.', 'error')
+    
+    return redirect(url_for('views.settings'))
+
+@views.route('/garmin/auth')
+@login_required
+def garmin_auth():
+    """Initiate Garmin OAuth flow"""
+    try:
+        redirect_uri = url_for('views.garmin_callback', _external=True)
+        auth_url = garmin_integration.get_auth_url(redirect_uri)
+        
+        if not auth_url:
+            flash('Error initializing Garmin connection. Please try again later.', category='error')
+            return redirect(url_for('views.settings'))
+            
+        logger.info(f"Redirecting to Garmin auth URL: {auth_url}")
+        return redirect(auth_url)
+    except Exception as e:
+        logger.error(f"Error in Garmin auth: {str(e)}", exc_info=True)
+        flash('Error connecting to Garmin. Please try again later.', category='error')
+        return redirect(url_for('views.settings'))
+
+@views.route('/garmin/callback')
+@login_required
+def garmin_callback():
+    """Handle Garmin OAuth callback"""
+    try:
+        code = request.args.get('code')
+        if not code:
+            logger.error("No code received from Garmin")
+            flash('Authorization failed: No code received from Garmin', 'error')
+            return redirect(url_for('views.settings'))
+            
+        logger.info(f"Received auth code from Garmin: {code[:10]}...")
+
+        redirect_uri = url_for('views.garmin_callback', _external=True)
+        logger.info(f"Using redirect URI: {redirect_uri}")
+        
+        token_response = garmin_integration.exchange_code_for_token(code, redirect_uri)
+        logger.info(f"Token response received: {bool(token_response)}")
+        
+        if not token_response:
+            logger.error("Failed to exchange code for token")
+            flash('Failed to connect to Garmin. Please try again.', 'error')
+            return redirect(url_for('views.settings'))
+        
+        # Store the token response values
+        current_user.garmin_access_token = token_response.get('access_token')
+        current_user.garmin_refresh_token = token_response.get('refresh_token')
+        current_user.garmin_token_expires_at = token_response.get('expires_at')
+        
+        logger.info("Saving tokens to database...")
+        db.session.commit()
+
+        logger.info("Starting activity sync...")
+        success_activities = garmin_integration.sync_activities(current_user)
+        success_sleep = garmin_integration.sync_sleep_data(current_user)
+        
+        if success_activities and success_sleep:
+            logger.info("Activity and sleep sync successful")
+            flash('Successfully connected to Garmin!', 'success')
+        else:
+            logger.warning("Initial sync failed")
+            flash('Connected to Garmin but failed to sync data. Please try syncing manually.', 'warning')
+            
+        return redirect(url_for('views.settings'))
+    except Exception as e:
+        logger.error(f"Error in Garmin callback: {str(e)}", exc_info=True)
+        flash(f'Error connecting to Garmin: {str(e)}', 'error')
+        return redirect(url_for('views.settings'))
+
+@views.route('/garmin/sync')
+@login_required
+def sync_garmin():
+    """Sync Garmin data"""
+    if not current_user.garmin_access_token:
+        flash('Please connect your Garmin account first.', 'error')
+        return redirect(url_for('views.settings'))
+    
+    try:
+        success_activities = garmin_integration.sync_activities(current_user)
+        success_sleep = garmin_integration.sync_sleep_data(current_user)
+        
+        if success_activities and success_sleep:
+            flash('Successfully synced Garmin data!', 'success')
+        else:
+            flash('Failed to sync Garmin data. Please try again.', 'error')
+    except Exception as e:
+        logger.error(f"Error syncing Garmin data: {str(e)}", exc_info=True)
+        flash('An error occurred while syncing Garmin data.', 'error')
+    
+    return redirect(url_for('views.settings'))
+
+@views.route('/garmin/disconnect')
+@login_required
+def disconnect_garmin():
+    """Disconnect Garmin account"""
+    current_user.garmin_access_token = None
+    current_user.garmin_refresh_token = None
+    current_user.garmin_token_expires_at = None
+    current_user.garmin_last_sync = None
+    db.session.commit()
+    flash('Disconnected from Garmin', 'success')
+    return redirect(url_for('views.settings'))
 

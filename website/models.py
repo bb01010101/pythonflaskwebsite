@@ -15,22 +15,41 @@ class User(db.Model, UserMixin):
     likes = db.relationship('Like', backref='user', lazy=True)
     custom_metrics = db.relationship('CustomMetric', backref='creator', lazy=True)
     metric_preferences = db.relationship('MetricPreference', backref='user', lazy=True)
-    strava_access_token = db.Column(db.String(150))
-    strava_refresh_token = db.Column(db.String(150))
-    strava_token_expires_at = db.Column(db.DateTime)
+    
+    # Strava integration fields
+    strava_access_token = db.Column(db.String(100))
+    strava_refresh_token = db.Column(db.String(100))
+    strava_token_expires_at = db.Column(db.DateTime(timezone=True))
     strava_athlete_id = db.Column(db.String(50))
-    myfitnesspal_username = db.Column(db.String(150), nullable=True, default=None)
-    myfitnesspal_password = db.Column(db.String(150), nullable=True, default=None)
-    myfitnesspal_last_sync = db.Column(db.DateTime, nullable=True, default=None)
+    
+    # Garmin integration fields
+    garmin_access_token = db.Column(db.String(100))
+    garmin_refresh_token = db.Column(db.String(100))
+    garmin_token_expires_at = db.Column(db.DateTime(timezone=True))
+    garmin_last_sync = db.Column(db.DateTime(timezone=True))
+    garmin_athlete_id = db.Column(db.String(50))  # Store Garmin user ID
+    
+    # MyFitnessPal integration fields
+    myfitnesspal_username = db.Column(db.String(150))
+    myfitnesspal_password = db.Column(db.String(150))
+    myfitnesspal_last_sync = db.Column(db.DateTime(timezone=True))
 
     def __init__(self, email, username, password):
         self.email = email
         self.username = username
         self.password = password
+        # Initialize Strava fields
         self.strava_access_token = None
         self.strava_refresh_token = None
         self.strava_token_expires_at = None
         self.strava_athlete_id = None
+        # Initialize Garmin fields
+        self.garmin_access_token = None
+        self.garmin_refresh_token = None
+        self.garmin_token_expires_at = None
+        self.garmin_last_sync = None
+        self.garmin_athlete_id = None
+        # Initialize MyFitnessPal fields
         self.myfitnesspal_username = None
         self.myfitnesspal_password = None
         self.myfitnesspal_last_sync = None

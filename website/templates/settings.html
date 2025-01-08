@@ -43,6 +43,36 @@
         </div>
     </div>
 
+    <!-- Garmin Integration Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Garmin Integration</h5>
+            {% if not garmin_connected %}
+                <p>Connect your Garmin account to automatically sync your activities and sleep data.</p>
+                <a href="{{ url_for('views.garmin_auth') }}" class="btn" style="background-color: #000000; color: white;">
+                    <i class="fas fa-running"></i> Connect to Garmin
+                </a>
+            {% else %}
+                <p class="text-success">
+                    <i class="fas fa-check-circle"></i> Connected to Garmin
+                </p>
+                <div class="btn-group">
+                    <a href="{{ url_for('views.sync_garmin') }}" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Sync Data
+                    </a>
+                    <a href="{{ url_for('views.disconnect_garmin') }}" class="btn btn-outline-danger">
+                        Disconnect Garmin
+                    </a>
+                </div>
+                {% if garmin_last_sync %}
+                    <p class="text-muted mt-2">
+                        <small>Last synced: {{ garmin_last_sync|timeago }}</small>
+                    </p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
     <!-- MyFitnessPal Integration Card -->
     <div class="card mb-4">
         <div class="card-body">

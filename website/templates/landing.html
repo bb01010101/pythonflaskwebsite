@@ -4,6 +4,77 @@
 
 {% block content %}
 <style>
+    /* Splash Screen */
+    .splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #40E0D0 0%, #3BC7B9 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        animation: fadeOut 1s ease-in-out 2s forwards;
+    }
+
+    .splash-screen.hidden {
+        display: none;
+    }
+
+    .splash-content {
+        text-align: center;
+        color: white;
+        animation: scaleIn 1.5s ease-out;
+    }
+
+    .splash-logo {
+        font-size: 4rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        opacity: 0;
+        animation: slideIn 0.8s ease-out 0.5s forwards;
+    }
+
+    .splash-text {
+        font-size: 1.5rem;
+        opacity: 0;
+        animation: slideIn 0.8s ease-out 1s forwards;
+    }
+
+    @keyframes fadeOut {
+        from { opacity: 1; visibility: visible; }
+        to { opacity: 0; visibility: hidden; }
+    }
+
+    @keyframes scaleIn {
+        from { transform: scale(0.8); }
+        to { transform: scale(1); }
+    }
+
+    @keyframes slideIn {
+        from { 
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Main Content Animations */
+    .main-content {
+        opacity: 0;
+        animation: fadeIn 1s ease-out 2.5s forwards;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
     .feature-section {
         padding: 4rem 0;
     }
@@ -14,21 +85,54 @@
         padding: 6rem 0;
         margin-bottom: 2rem;
         text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+        animation: backgroundMove 30s linear infinite;
+    }
+
+    @keyframes backgroundMove {
+        from { background-position: 0 0; }
+        to { background-position: 100% 100%; }
     }
 
     .hero-title {
-        font-size: 3.5rem;
-        font-weight: 700;
-        margin-bottom: 1.5rem;
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: slideUp 0.8s ease-out 3s forwards;
     }
 
     .hero-subtitle {
         font-size: 1.5rem;
-        opacity: 0.9;
-        margin-bottom: 2rem;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: slideUp 0.8s ease-out 3.2s forwards;
     }
 
-    .feature-card {
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .hero-card {
         background: white;
         border-radius: 1rem;
         padding: 2rem;
@@ -38,25 +142,25 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .feature-card:hover {
+    .hero-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
     }
 
-    .feature-icon {
+    .hero-icon {
         font-size: 2.5rem;
         color: var(--primary-color);
         margin-bottom: 1.5rem;
     }
 
-    .feature-title {
+    .hero-title {
         font-size: 1.5rem;
         font-weight: 600;
         margin-bottom: 1rem;
         color: #333;
     }
 
-    .feature-description {
+    .hero-description {
         color: #666;
         font-size: 1.1rem;
         line-height: 1.6;
@@ -95,15 +199,15 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .dark-mode .feature-card {
+    .dark-mode .hero-card {
         background: var(--card-bg-dark);
     }
 
-    .dark-mode .feature-title {
+    .dark-mode .hero-title {
         color: var(--text-light);
     }
 
-    .dark-mode .feature-description {
+    .dark-mode .hero-description {
         color: rgba(255, 255, 255, 0.7);
     }
 
@@ -116,104 +220,123 @@
     }
 </style>
 
-<!-- Hero Section -->
-<section class="hero-section">
-    <div class="container">
-        <h1 class="hero-title">Max your Lyf with LyfMax</h1>
-        <p class="hero-subtitle">Your all-in-one platform for health, fitness, and personal growth tracking</p>
-        <div>
+<!-- Splash Screen -->
+<div class="splash-screen">
+    <div class="splash-content">
+        <div class="splash-logo">LyfMax</div>
+        <div class="splash-text">Maximize Your Potential</div>
+    </div>
+</div>
+
+<div class="main-content">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">Max your Lyf with LyfMax</h1>
+            <p class="hero-subtitle">Your all-in-one platform for health, fitness, and personal growth tracking</p>
+            <div>
+                <a href="{{ url_for('auth.sign_up') }}" class="btn-cta">
+                    <i class="fas fa-user-plus me-2"></i>Get Started
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="btn-cta" style="background-color: transparent; border: 2px solid white;">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="feature-section">
+        <div class="container">
+            <div class="row g-4">
+
+                <!-- Progress Tracking -->
+                <div class="col-md-4">
+                    <div class="hero-card">
+                        <i class="fas fa-chart-line hero-icon"></i>
+                        <h3 class="hero-title">Progress Analytics</h3>
+                        <p class="hero-description">
+                            Visualize your progress with detailed charts and analytics. Track trends and identify areas for improvement.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Activity Tracking -->
+                <div class="col-md-4">
+                    <div class="hero-card">
+                        <i class="fas fa-running hero-icon"></i>
+                        <h3 class="hero-title">Activity Tracking</h3>
+                        <p class="hero-description">
+                            Track your daily activities and optimize your recovery through sleep and hydration. Seamlessly integrate with Garmin, COROS, and Strava for comprehensive fitness and recovery monitoring.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Nutrition Monitoring -->
+                <div class="col-md-4">
+                    <div class="hero-card">
+                        <i class="fas fa-utensils hero-icon"></i>
+                        <h3 class="hero-title">Nutrition Monitoring</h3>
+                        <p class="hero-description">
+                            Connect with MyFitnessPal to track your nutrition and hydrationgoals. Monitor calories, macros, and maintain a balanced diet effortlessly.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Challenges -->
+                <div class="col-md-4">
+                    <div class="hero-card">
+                        <i class="fas fa-flag-checkered hero-icon"></i>
+                        <h3 class="hero-title">Fitness Challenges</h3>
+                        <p class="hero-description">
+                            Create and join challenges to stay motivated. Compete with friends or join public challenges to push your limits.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Community -->
+                <div class="col-md-4">
+                    <div class="hero-card">
+                        <i class="fas fa-users hero-icon"></i>
+                        <h3 class="hero-title">Community Feed</h3>
+                        <p class="hero-description">
+                            Share your achievements, post updates, and interact with a community of like-minded individuals on your fitness journey.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Leaderboards -->
+                <div class="col-md-4">
+                    <div class="hero-card">
+                        <i class="fas fa-trophy hero-icon"></i>
+                        <h3 class="hero-title">Leaderboards</h3>
+                        <p class="hero-description">
+                            Compete on global leaderboards across different metrics. See how you stack up against others and stay motivated.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2 class="cta-title">Start Your Journey Today</h2>
+            <p class="lead mb-4">Join thousands of users who are already tracking their way to a better life</p>
             <a href="{{ url_for('auth.sign_up') }}" class="btn-cta">
-                <i class="fas fa-user-plus me-2"></i>Get Started
-            </a>
-            <a href="{{ url_for('auth.login') }}" class="btn-cta" style="background-color: transparent; border: 2px solid white;">
-                <i class="fas fa-sign-in-alt me-2"></i>Login
+                <i class="fas fa-rocket me-2"></i>Begin Your Journey
             </a>
         </div>
-    </div>
-</section>
+    </section>
+</div>
 
-<!-- Features Section -->
-<section class="feature-section">
-    <div class="container">
-        <div class="row g-4">
-
-            <!-- Progress Tracking -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <i class="fas fa-chart-line feature-icon"></i>
-                    <h3 class="feature-title">Progress Analytics</h3>
-                    <p class="feature-description">
-                        Visualize your progress with detailed charts and analytics. Track trends and identify areas for improvement.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Activity Tracking -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <i class="fas fa-running feature-icon"></i>
-                    <h3 class="feature-title">Activity Tracking</h3>
-                    <p class="feature-description">
-                        Track your daily activities and optimize your recovery through sleep and hydration. Seamlessly integrate with Garmin, COROS, and Strava for comprehensive fitness and recovery monitoring.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Nutrition Monitoring -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <i class="fas fa-utensils feature-icon"></i>
-                    <h3 class="feature-title">Nutrition Monitoring</h3>
-                    <p class="feature-description">
-                        Connect with MyFitnessPal to track your nutrition and hydrationgoals. Monitor calories, macros, and maintain a balanced diet effortlessly.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Challenges -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <i class="fas fa-flag-checkered feature-icon"></i>
-                    <h3 class="feature-title">Fitness Challenges</h3>
-                    <p class="feature-description">
-                        Create and join challenges to stay motivated. Compete with friends or join public challenges to push your limits.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Community -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <i class="fas fa-users feature-icon"></i>
-                    <h3 class="feature-title">Community Feed</h3>
-                    <p class="feature-description">
-                        Share your achievements, post updates, and interact with a community of like-minded individuals on your fitness journey.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Leaderboards -->
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <i class="fas fa-trophy feature-icon"></i>
-                    <h3 class="feature-title">Leaderboards</h3>
-                    <p class="feature-description">
-                        Compete on global leaderboards across different metrics. See how you stack up against others and stay motivated.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- CTA Section -->
-<section class="cta-section">
-    <div class="container">
-        <h2 class="cta-title">Start Your Journey Today</h2>
-        <p class="lead mb-4">Join thousands of users who are already tracking their way to a better life</p>
-        <a href="{{ url_for('auth.sign_up') }}" class="btn-cta">
-            <i class="fas fa-rocket me-2"></i>Begin Your Journey
-        </a>
-    </div>
-</section>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        setTimeout(function() {
+            const splashScreen = document.querySelector('.splash-screen');
+            splashScreen.classList.add('hidden');
+        }, 3000); // Adjust the time as needed (3000ms = 3 seconds)
+    });
+</script>
 {% endblock %} 
