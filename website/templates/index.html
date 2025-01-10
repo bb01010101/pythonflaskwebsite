@@ -238,6 +238,14 @@
         color: rgba(255,255,255,0.9);
     }
 
+    .coral-card {
+        background-color: #FF6B6B;
+        color: white;
+    }
+    .coral-card .card-text {
+        color: rgba(255,255,255,0.9);
+    }
+
     .teal-card {
         background-color: #40E0D0;
         color: white;
@@ -324,6 +332,17 @@
                             <i class="fas fa-stream feature-icon"></i>
                             <h3 class="card-title mt-2">Feed</h3>
                             <p class="card-text">Share and view community posts</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+                <a href="{{ url_for('views.chat') }}" class="card-link">
+                    <div class="card feature-card coral-card">
+                        <div class="card-body text-center py-3">
+                            <i class="fas fa-robot feature-icon"></i>
+                            <h3 class="card-title mt-2">AI Coach</h3>
+                            <p class="card-text">Get personalized guidance and motivation</p>
                         </div>
                     </div>
                 </a>
