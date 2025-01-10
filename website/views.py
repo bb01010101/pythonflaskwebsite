@@ -14,6 +14,7 @@ import pytz
 import jwt
 from .garmin_integration import GarminIntegration
 from .chatbot import chatbot
+from website.chatbot import HealthChatbot
 
 logger = logging.getLogger(__name__)
 
