@@ -1804,3 +1804,27 @@ def chat_history():
         logger.error(f"Error fetching chat history: {str(e)}", exc_info=True)
         return jsonify({'error': 'An error occurred fetching chat history'}), 500
 
+@views.route('/set_openai_key', methods=['POST'])
+@login_required
+def set_openai_key():
+    """Set OpenAI API key"""
+    try:
+        api_key = request.form.get('api_key')
+        if not api_key:
+            flash('API key is required', 'error')
+            return redirect(url_for('views.settings'))
+        
+        # Set the environment variable
+        os.environ['OPENAI_API_KEY'] = api_key
+        
+        # Reinitialize the chatbot with the new API key
+        global chatbot
+        chatbot = HealthChatbot()
+        
+        flash('OpenAI API key set successfully!', 'success')
+    except Exception as e:
+        logger.error(f"Error setting OpenAI API key: {str(e)}")
+        flash('Error setting API key', 'error')
+    
+    return redirect(url_for('views.settings'))
+
