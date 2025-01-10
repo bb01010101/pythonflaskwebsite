@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
 from flask_login import login_required, current_user
-from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity, Challenge, ChallengeParticipant
+from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity, Challenge, ChallengeParticipant, ChatMessage
 from . import db
 import json
 import datetime
@@ -13,6 +13,7 @@ from .myfitnesspal_integration import MyFitnessPalIntegration
 import pytz
 import jwt
 from .garmin_integration import GarminIntegration
+from .chatbot import chatbot
 
 logger = logging.getLogger(__name__)
 
@@ -1740,4 +1741,66 @@ def disconnect_garmin():
     db.session.commit()
     flash('Disconnected from Garmin', 'success')
     return redirect(url_for('views.settings'))
+
+@views.route('/chat')
+@login_required
+def chat():
+    """Chat interface route"""
+    return render_template('chat.html', user=current_user)
+
+@views.route('/chat/message', methods=['POST'])
+@login_required
+def chat_message():
+    """Handle chat messages"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        # Save user message
+        user_message = ChatMessage(
+            user_id=current_user.id,
+            content=message,
+            is_bot=False
+        )
+        db.session.add(user_message)
+        
+        # Get bot response
+        response = chatbot.process_message(current_user, message)
+        
+        # Save bot response
+        bot_message = ChatMessage(
+            user_id=current_user.id,
+            content=response,
+            is_bot=True
+        )
+        db.session.add(bot_message)
+        
+        db.session.commit()
+        
+        return jsonify({'response': response})
+        
+    except Exception as e:
+        logger.error(f"Error processing chat message: {str(e)}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'error': 'An error occurred processing your message'}), 500
+
+@views.route('/chat/history')
+@login_required
+def chat_history():
+    """Get chat history for the current user"""
+    try:
+        messages = ChatMessage.query.filter_by(user_id=current_user.id).order_by(ChatMessage.timestamp).all()
+        return jsonify({
+            'messages': [{
+                'content': msg.content,
+                'is_bot': msg.is_bot,
+                'timestamp': msg.timestamp.isoformat()
+            } for msg in messages]
+        })
+    except Exception as e:
+        logger.error(f"Error fetching chat history: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred fetching chat history'}), 500
 

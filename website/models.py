@@ -197,6 +197,28 @@ class ChallengeParticipant(db.Model):
                 
         return total
 
+class Goal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    type = db.Column(db.String(50))  # 'daily' or 'weekly'
+    description = db.Column(db.Text, nullable=False)
+    target_value = db.Column(db.Float)
+    metric_type = db.Column(db.String(50))  # e.g., 'running_mileage', 'sleep_hours', etc.
+    start_date = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    end_date = db.Column(db.DateTime)
+    completed = db.Column(db.Boolean, default=False)
+    
+    user = db.relationship('User', backref=db.backref('goals', lazy=True))
+
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    is_bot = db.Column(db.Boolean, default=False)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    
+    user = db.relationship('User', backref=db.backref('chat_messages', lazy=True))
+
 
 
 
