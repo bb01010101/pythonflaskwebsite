@@ -262,26 +262,28 @@
 
     /* Challenges */
     .challenge-item {
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        background: rgba(0, 0, 0, 0.05);
+        margin-bottom: 0.75rem;
         display: flex;
         align-items: center;
         gap: 1rem;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 0.75rem;
-        margin-bottom: 0.75rem;
     }
 
     .challenge-badge {
-        width: 3rem;
-        height: 3rem;
+        width: 2.5rem;
+        height: 2.5rem;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
         color: white;
+        background: #40E0D0;
+        flex-shrink: 0;
     }
 
-    .challenge-info {
+    .challenge-content {
         flex: 1;
     }
 
@@ -290,9 +292,15 @@
         margin-bottom: 0.25rem;
     }
 
+    .challenge-description {
+        font-size: 0.9rem;
+        color: rgba(0, 0, 0, 0.7);
+        margin-bottom: 0.25rem;
+    }
+
     .challenge-meta {
         font-size: 0.8rem;
-        color: #666;
+        color: rgba(0, 0, 0, 0.6);
     }
 
     /* Leaderboard */
@@ -498,6 +506,33 @@
     .feature-card, .hero-section, .feature-content, .feature-icon-wrapper {
         transition: all 0.3s ease-in-out;
     }
+
+    /* Update feature section layout */
+    .feature-section .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: -1rem;  /* Compensate for padding */
+    }
+
+    .feature-section .col-md-4 {
+        flex: 0 0 33.333333%;
+        max-width: 33.333333%;
+        padding: 1rem;
+    }
+
+    @media (max-width: 992px) {
+        .feature-section .col-md-4 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .feature-section .col-md-4 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
 </style>
 
 <!-- Splash Screen -->
@@ -559,6 +594,18 @@
                                                   stroke="none"/>
                                         </svg>
                                     </div>
+                                    <div class="chart-area" style="padding: 1rem;">
+                                        <h3>Sleep Hours</h3>
+                                        <svg viewBox="0 0 300 150" class="chart" style="width: 100%; height: 150px;">
+                                            <path d="M0,120 L50,90 L100,110 L150,70 L200,85 L250,40 L300,60" 
+                                                  fill="none" 
+                                                  stroke="#9C27B0" 
+                                                  stroke-width="2"/>
+                                            <path d="M0,120 L50,90 L100,110 L150,70 L200,85 L250,40 L300,60 L300,150 L0,150" 
+                                                  fill="rgba(156,39,176,0.1)" 
+                                                  stroke="none"/>
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -582,7 +629,7 @@
                                 </div>
                                 <div class="chat-container" style="padding: 1.5rem;">
                                     <div class="chat-bubble ai">
-                                        Hi there! I noticed you've been consistently hitting your running goals. Your average pace has improved by 30 seconds per mile over the last month. Would you like to adjust your training plan?
+                                        Hi there! I noticed you've been consistently hitting your running goals and recovering well. Would you like to adjust your training plan?
                                         <div class="message-meta">Just now</div>
                                     </div>
                                     <div class="chat-bubble user" style="background: #FF6B6B;">
@@ -590,7 +637,7 @@
                                         <div class="message-meta">Just now</div>
                                     </div>
                                     <div class="chat-bubble ai">
-                                        Great goal! Based on your current fitness level and running history, I recommend a 12-week training plan. Would you like to see the details?
+                                        Great goal! Based on your current fitness level, I recommend a 12-week training plan. Would you like to see the details?
                                         <div class="message-meta">Just now</div>
                                     </div>
                                 </div>
@@ -617,23 +664,33 @@
                                 </div>
                                 <div class="challenges-content" style="padding: 1.5rem;">
                                     <div class="challenge-item">
-                                        <div class="challenge-badge teal-card">
-                                            <i class="fas fa-running"></i>
+                                        <div class="challenge-badge">
+                                            <i class="fas fa-walking"></i>
                                         </div>
-                                        <div class="challenge-info">
-                                            <div class="challenge-title">January Running Challenge</div>
-                                            <div class="challenge-description">Who can run the most miles in January?</div>
-                                            <div class="challenge-meta">Jan 01, 2025 to Jan 31, 2025</div>
+                                        <div class="challenge-content">
+                                            <div class="challenge-title">10K Steps Challenge</div>
+                                            <div class="challenge-description">Hit 10,000 steps every day this month</div>
+                                            <div class="challenge-meta">Jan 01, 2025 to Jan 15, 2025</div>
                                         </div>
                                     </div>
-                                    <div class="challenge-item" style="margin-top: 1rem;">
-                                        <div class="challenge-badge teal-card">
+                                    <div class="challenge-item">
+                                        <div class="challenge-badge">
                                             <i class="fas fa-moon"></i>
                                         </div>
-                                        <div class="challenge-info">
-                                            <div class="challenge-title">Sleep Maxxing</div>
-                                            <div class="challenge-description">Who can catch the most Z's during the next two weeks?</div>
-                                            <div class="challenge-meta">Jan 01, 2025 to Jan 15, 2025</div>
+                                        <div class="challenge-content">
+                                            <div class="challenge-title">Sleep Improvement</div>
+                                            <div class="challenge-description">Maintain a consistent 8-hour sleep schedule</div>
+                                            <div class="challenge-meta">Jan 01, 2025 to Mar 31, 2025</div>
+                                        </div>
+                                    </div>
+                                    <div class="challenge-item">
+                                        <div class="challenge-badge">
+                                            <i class="fas fa-mobile-alt"></i>
+                                        </div>
+                                        <div class="challenge-content">
+                                            <div class="challenge-title">Screen Time Control</div>
+                                            <div class="challenge-description">Reduce daily screen time to under 2 hours</div>
+                                            <div class="challenge-meta">Jan 01, 2025 to Mar 31, 2025</div>
                                         </div>
                                     </div>
                                 </div>
@@ -667,7 +724,7 @@
                                         <div class="message-meta">David M. • 3h ago</div>
                                     </div>
                                     <div class="message-bubble right">
-                                        <div class="message-content">Count me in! Last week's trail run was amazing!</div>
+                                        <div class="message-content">Count me in!</div>
                                         <div class="message-meta">You • 2h ago</div>
                                     </div>
                                 </div>

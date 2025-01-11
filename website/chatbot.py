@@ -21,6 +21,37 @@ class HealthChatbot:
         ]
         # Initialize OpenAI client
         openai.api_key = os.environ.get('OPENAI_API_KEY')
+        
+        # System message that defines the chatbot's personality and capabilities
+        self.system_message = """You are an expert AI health and fitness coach with deep knowledge in:
+- Exercise physiology and training principles
+- Nutrition and dietary planning
+- Sleep optimization and recovery
+- Mental wellness and motivation
+- Habit formation and behavior change
+
+Your personality traits:
+- Supportive and encouraging, but also direct when needed
+- Data-driven, making recommendations based on user metrics
+- Holistic in approach, considering all aspects of health
+- Engaging and conversational, using emojis appropriately
+- Professional but friendly
+
+When responding:
+1. Format responses in clear paragraphs or bullet points
+2. Use markdown for emphasis when appropriate
+3. Include relevant emojis to make the conversation engaging
+4. Reference user's data when available
+5. Provide specific, actionable advice
+6. Keep responses concise but informative
+7. Always maintain a positive, motivating tone
+
+You have access to user's:
+- Daily activity metrics (running, sleep, water intake, etc.)
+- Historical progress data
+- Goals and preferences
+
+Focus on helping users build sustainable healthy habits and achieve their fitness goals."""
 
     def get_random_motivation(self):
         """Return a random motivational quote"""
@@ -212,53 +243,165 @@ Goals should be challenging but achievable. Include emojis and make them specifi
 
     def process_message(self, user, message_text):
         """Process user message and generate appropriate response using OpenAI"""
-        # Get user's recent entries for context
-        recent_entries = Entry.query.filter_by(user_id=user.id).order_by(Entry.date.desc()).limit(7).all()
-        
-        # Prepare context about the user's recent activity
-        context = ""
-        if recent_entries:
-            context = "Recent activity:\n"
-            for entry in recent_entries[:3]:
-                context += f"- {entry.date}: {entry.running_mileage} miles run, {entry.sleep_hours}h sleep, {entry.water_intake}ml water\n"
-
         try:
-            # Generate response using OpenAI
+            # Get user's recent entries and chat history for context
+            recent_entries = Entry.query.filter_by(user_id=user.id).order_by(Entry.date.desc()).limit(7).all()
+            recent_messages = ChatMessage.query.filter_by(user_id=user.id).order_by(ChatMessage.timestamp.desc()).limit(10).all()
+            
+            # Prepare detailed context about the user's recent activity
+            context = self._prepare_user_context(user, recent_entries)
+            
+            # Prepare conversation history
+            messages = [{"role": "system", "content": self.system_message}]
+            
+            # Add recent conversation history (in reverse to get correct order)
+            for msg in reversed(recent_messages):
+                role = "assistant" if msg.is_bot else "user"
+                messages.append({"role": role, "content": msg.content})
+            
+            # Add current message with enhanced context
+            messages.append({
+                "role": "user", 
+                "content": f"{context}\n\nUser message: {message_text}"
+            })
+
+            # Generate response using OpenAI with enhanced parameters
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": """You are a supportive and knowledgeable AI health coach. 
-Your goal is to help users achieve their fitness goals and maintain healthy habits.
-Keep responses concise, positive, and actionable.
-When appropriate, include specific references to the user's data.
-Use emojis to make responses engaging."""},
-                    {"role": "user", "content": f"User context:\n{context}\n\nUser message: {message_text}"}
-                ],
-                max_tokens=300,
-                temperature=0.7
+                messages=messages,
+                temperature=0.8,  # Slightly increased for more creativity
+                max_tokens=800,   # Increased for more detailed responses
+                presence_penalty=0.6,  # Encourage more varied responses
+                frequency_penalty=0.4,  # Reduce repetition
+                top_p=0.9,  # More focused but still creative responses
             )
             return response.choices[0].message.content
+
         except Exception as e:
-            # Fallback to basic responses if OpenAI fails
-            message_text = message_text.lower()
-            if any(word in message_text for word in ['goal', 'goals', 'target']):
-                daily_goals = self.generate_daily_goals(user)
-                weekly_goals = self.generate_weekly_goals(user)
-                response = "Here are your personalized goals:\n\nDaily Goals:\n"
-                response += "\n".join(daily_goals)
-                response += "\n\nWeekly Goals:\n"
-                response += "\n".join(weekly_goals)
-            elif any(word in message_text for word in ['progress', 'doing', 'analysis']):
-                response = self.analyze_progress(user)
-            elif any(word in message_text for word in ['motivate', 'motivation', 'inspire']):
-                response = self.get_random_motivation()
-            else:
-                response = ("I'm here to help you reach your health and fitness goals! "
-                          "You can ask me about:\n"
-                          "- Your goals\n"
-                          "- Your progress\n"
-                          "- Motivation\n"
-                          "Or just tell me how you're doing today!")
-            return response
+            # Log the error for debugging
+            print(f"Error in process_message: {str(e)}")
+            # Return a more natural fallback response
+            return self._generate_fallback_response(message_text, user)
+
+    def _prepare_user_context(self, user, recent_entries):
+        """Prepare detailed context about the user's activity and progress"""
+        context = "User Context:\n"
+        
+        if recent_entries:
+            # Add recent activity summary
+            context += "\nRecent Activity:\n"
+            for entry in recent_entries[:3]:
+                context += f"- Date: {entry.date}\n"
+                context += f"  • Running: {entry.running_mileage} miles\n"
+                context += f"  • Sleep: {entry.sleep_hours} hours\n"
+                context += f"  • Water: {entry.water_intake}ml\n"
+                context += f"  • Calories: {entry.calories}\n"
+                if entry.notes:
+                    context += f"  • Notes: {entry.notes}\n"
+            
+            # Calculate trends
+            avg_running = sum(e.running_mileage for e in recent_entries) / len(recent_entries)
+            avg_sleep = sum(e.sleep_hours for e in recent_entries) / len(recent_entries)
+            avg_water = sum(e.water_intake for e in recent_entries) / len(recent_entries)
+            
+            context += "\nWeekly Averages:\n"
+            context += f"• Average daily running: {avg_running:.1f} miles\n"
+            context += f"• Average sleep: {avg_sleep:.1f} hours\n"
+            context += f"• Average water intake: {avg_water:.0f}ml\n"
+            
+            # Add trend analysis
+            running_trend = [e.running_mileage for e in recent_entries]
+            if len(running_trend) > 1:
+                if running_trend[0] > running_trend[-1]:
+                    context += "\nTrends: Running distance has been increasing\n"
+                elif running_trend[0] < running_trend[-1]:
+                    context += "\nTrends: Running distance has been decreasing\n"
+        else:
+            context += "\nNo recent activity data available. This appears to be a new user.\n"
+        
+        # Add user's goals if any
+        goals = Goal.query.filter_by(user_id=user.id, completed=False).all()
+        if goals:
+            context += "\nActive Goals:\n"
+            for goal in goals:
+                context += f"• {goal.description} (Target: {goal.target_value} {goal.metric_type})\n"
+        
+        return context
+
+    def _generate_fallback_response(self, message_text, user):
+        """Generate a more natural fallback response based on the message content"""
+        message_lower = message_text.lower()
+        
+        if 'workout' in message_lower or 'exercise' in message_lower:
+            return """💪 Here are some personalized workout recommendations:
+
+1. **Cardio Focus**
+• Start with a 5-minute warm-up
+• 20-30 minutes of moderate-intensity running or cycling
+• Cool down with 5 minutes of walking
+
+2. **Strength Training**
+• Bodyweight exercises: push-ups, squats, lunges
+• 3 sets of 10-12 repetitions
+• Rest 60 seconds between sets
+
+Remember to:
+• Stay hydrated
+• Listen to your body
+• Maintain proper form
+
+Would you like more specific exercises or a detailed workout plan?"""
+
+        elif 'nutrition' in message_lower or 'diet' in message_lower or 'food' in message_lower:
+            return """🥗 Here are some key nutrition tips:
+
+1. **Balanced Meals**
+• Include protein, complex carbs, and healthy fats
+• Aim for colorful vegetables
+• Control portion sizes
+
+2. **Hydration**
+• Drink water throughout the day
+• Monitor your intake
+• Limit sugary drinks
+
+3. **Timing**
+• Eat regular meals
+• Plan pre and post-workout nutrition
+• Listen to hunger cues
+
+Would you like specific meal suggestions or a nutrition plan?"""
+
+        elif 'sleep' in message_lower or 'rest' in message_lower:
+            return """😴 Here are some sleep optimization tips:
+
+1. **Evening Routine**
+• Consistent bedtime
+• Dim lights 1-2 hours before bed
+• Limit screen time
+
+2. **Environment**
+• Cool, dark room
+• Comfortable bedding
+• Minimize noise
+
+3. **Habits**
+• Avoid caffeine after 2 PM
+• Regular exercise (but not too close to bedtime)
+• Relaxation techniques
+
+Would you like more specific advice for better sleep quality?"""
+
+        else:
+            return """I'm here to help you with your health and fitness journey! Let's focus on what matters most to you:
+
+• 🎯 Setting achievable goals
+• 💪 Personalized workout plans
+• 🥗 Nutrition guidance
+• 😴 Sleep optimization
+• 📊 Progress tracking
+• 🎉 Staying motivated
+
+What specific aspect would you like to discuss?"""
 
 chatbot = HealthChatbot() 
