@@ -533,6 +533,107 @@
             max-width: 100%;
         }
     }
+
+    /* Ensure text contrast in preview sections */
+    .charts-header, .ai-coach-header, .challenges-header, 
+    .messages-header, .leaderboard-header, .feed-header {
+        color: white !important;
+        padding: 1rem;
+    }
+
+    .charts-header { background: #9C27B0 !important; }
+    .ai-coach-header { background: #FF6B6B !important; }
+    .challenges-header { background: #40E0D0 !important; }
+    .messages-header { background: #FF9F45 !important; }
+    .leaderboard-header { background: #FFD700 !important; color: #333 !important; }
+    .feed-header { background: #dc3545 !important; }
+
+    /* Message bubbles and chat styling */
+    .chat-bubble.ai {
+        background: #f0f2f5;
+        color: #333;
+    }
+
+    .chat-bubble.user {
+        background: #FF6B6B;
+        color: white;
+    }
+
+    .message-bubble.left {
+        background: #f0f2f5;
+        color: #333;
+    }
+
+    .message-bubble.right {
+        background: #FF9F45;
+        color: white;
+    }
+
+    .message-meta {
+        color: rgba(0, 0, 0, 0.6);
+    }
+
+    /* Challenge items */
+    .challenge-item {
+        background: rgba(0, 0, 0, 0.05);
+        color: #333;
+    }
+
+    .challenge-badge {
+        background: #40E0D0;
+        color: white;
+    }
+
+    .challenge-title {
+        color: #333;
+        font-weight: 600;
+    }
+
+    .challenge-description {
+        color: rgba(0, 0, 0, 0.7);
+    }
+
+    /* Leaderboard items */
+    .leaderboard-item {
+        color: #333;
+    }
+
+    /* Post items */
+    .post-item {
+        color: #333;
+    }
+
+    .post-stats {
+        color: #666;
+    }
+
+    /* Dark mode adjustments */
+    .dark-mode .feature-card {
+        background: var(--card-bg-dark);
+    }
+
+    .dark-mode .app-window {
+        background: #1a1a1a;
+    }
+
+    .dark-mode .challenge-item,
+    .dark-mode .message-bubble.left,
+    .dark-mode .chat-bubble.ai {
+        background: #2d2d2d;
+        color: white;
+    }
+
+    .dark-mode .challenge-title,
+    .dark-mode .challenge-description,
+    .dark-mode .post-item,
+    .dark-mode .leaderboard-item {
+        color: white;
+    }
+
+    .dark-mode .message-meta,
+    .dark-mode .post-stats {
+        color: rgba(255, 255, 255, 0.6);
+    }
 </style>
 
 <!-- Splash Screen -->
