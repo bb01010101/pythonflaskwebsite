@@ -118,9 +118,10 @@
 
     .hero-subtitle {
         font-size: 1.5rem;
-        opacity: 0;
-        transform: translateY(20px);
-        animation: slideUp 0.8s ease-out 3.2s forwards;
+        opacity: 0.9;
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.4;
     }
 
     /* Feature Cards */
@@ -341,11 +342,24 @@
         text-decoration: none;
         transition: all 0.3s ease;
         display: inline-block;
+        font-weight: 500;
     }
 
     .btn-cta:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-cta.demo-btn {
+        background-color: rgba(255,255,255,0.15);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .btn-cta.demo-btn:hover {
+        background-color: rgba(255,255,255,0.25);
+        border-color: rgba(255,255,255,0.4);
     }
 
     /* Color Cards */
@@ -634,6 +648,27 @@
     .dark-mode .post-stats {
         color: rgba(255, 255, 255, 0.6);
     }
+
+    .feature-highlight {
+        font-size: 1.2rem;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+    }
+
+    .feature-meta {
+        color: rgba(255,255,255,0.7);
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .feature-meta i {
+        margin-right: 0.25rem;
+    }
 </style>
 
 <!-- Splash Screen -->
@@ -653,15 +688,20 @@
                 <p style="font-size: 1.5rem; font-weight: 400;">Maximize Your Potential</p>
             </div>
             <h1 class="hero-title">Max your Lyf with LyfMax</h1>
-            <p class="hero-subtitle mb-4">Your all-in-one platform for health, fitness, and personal growth tracking</p>
+            <p class="hero-subtitle mb-2">Your all-in-one platform for health, fitness, and personal growth tracking</p>
+            <p class="text-white mb-4" style="font-size: 1.2rem;">✨ Creating an account is 100% free! ✨</p>
             <div class="d-flex justify-content-center gap-3">
                 <a href="{{ url_for('auth.sign_up') }}" class="btn-cta" style="background-color: white; color: var(--primary-color);">
-                    <i class="fas fa-user-plus me-2"></i>Get Started
+                    <i class="fas fa-user-plus me-2"></i>Sign Up Free
+                </a>
+                <a href="{{ url_for('views.demo') }}" class="btn-cta" style="background-color: rgba(255,255,255,0.15); backdrop-filter: blur(5px);">
+                    <i class="fas fa-play me-2"></i>Try Demo
                 </a>
                 <a href="{{ url_for('auth.login') }}" class="btn-cta" style="background-color: transparent; border: 2px solid white;">
                     <i class="fas fa-sign-in-alt me-2"></i>Login
                 </a>
             </div>
+            <p class="text-white-50 mt-3" style="font-size: 0.9rem;">No credit card required • Instant access • Try all features</p>
         </div>
     </section>
 
