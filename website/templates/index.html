@@ -161,11 +161,11 @@
     }
 
     .feature-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        transition: all 0.3s ease;
         border: none;
         border-radius: 1rem;
         overflow: hidden;
-        height: 100%;
     }
 
     .feature-card:hover {
@@ -179,79 +179,36 @@
     }
 
     .card-title {
+        font-size: 1.5rem;
         font-weight: 600;
-        font-size: 1.25rem;
         margin-bottom: 0.5rem;
     }
 
     .card-text {
-        font-size: 0.9rem;
-        margin-bottom: 0;
+        font-size: 1rem;
+        opacity: 0.9;
     }
 
-    /* Color schemes for each card */
-    .green-card {
-        background-color: #4CAF50;
-        color: white;
-    }
-    .green-card .card-text {
-        color: rgba(255,255,255,0.9);
+    .card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        height: 100%;
     }
 
-    .blue-card {
-        background-color: #2196F3;
-        color: white;
-    }
-    .blue-card .card-text {
-        color: rgba(255,255,255,0.9);
+    .card-link:hover {
+        text-decoration: none;
+        color: inherit;
     }
 
-    .purple-card {
-        background-color: #9C27B0;
-        color: white;
-    }
-    .purple-card .card-text {
-        color: rgba(255,255,255,0.9);
+    .dark-mode .feature-card {
+        background-color: var(--primary-color);
+        color: var(--text-light);
     }
 
-    .gold-card {
-        background-color: #FFC107;
-        color: white;
-    }
-    .gold-card .card-text {
-        color: rgba(255,255,255,0.9);
-    }
-
-    .orange-card {
-        background-color: #FF9F45;
-        color: white;
-    }
-    .orange-card .card-text {
-        color: rgba(255,255,255,0.9);
-    }
-
-    .rose-card {
-        background-color: #dc3545;
-        color: white;
-    }
-    .rose-card .card-text {
-        color: rgba(255,255,255,0.9);
-    }
-
-    .coral-card {
-        background-color: #FF6B6B;
-        color: white;
-    }
-    .coral-card .card-text {
-        color: rgba(255,255,255,0.9);
-    }
-
-    .teal-card {
-        background-color: #40E0D0;
-        color: white;
-    }
-    .teal-card .card-text {
-        color: rgba(255,255,255,0.9);
+    .dark-mode .card-text {
+        color: var(--text-light);
+        opacity: 0.9;
     }
 </style>
 
@@ -272,9 +229,9 @@
         <div class="row g-4 justify-content-center">
             <div class="col-sm-6 col-lg-4">
                 <a href="/add_entry" class="card-link">
-                    <div class="card feature-card green-card">
+                    <div class="card feature-card">
                         <div class="card-body text-center py-3">
-                            <i class="fas fa-plus-circle feature-icon"></i>
+                            <i class="fas fa-plus feature-icon"></i>
                             <h3 class="card-title mt-2">Add Entry</h3>
                             <p class="card-text">Record your daily health and fitness data</p>
                         </div>
@@ -283,7 +240,7 @@
             </div>
             <div class="col-sm-6 col-lg-4">
                 <a href="/view_data" class="card-link">
-                    <div class="card feature-card blue-card">
+                    <div class="card feature-card">
                         <div class="card-body text-center py-3">
                             <i class="fas fa-table feature-icon"></i>
                             <h3 class="card-title mt-2">View Data</h3>
@@ -294,7 +251,7 @@
             </div>
             <div class="col-sm-6 col-lg-4">
                 <a href="/view_charts" class="card-link">
-                    <div class="card feature-card purple-card">
+                    <div class="card feature-card">
                         <div class="card-body text-center py-3">
                             <i class="fas fa-chart-bar feature-icon"></i>
                             <h3 class="card-title mt-2">Charts</h3>
@@ -304,8 +261,8 @@
                 </a>
             </div>
             <div class="col-sm-6 col-lg-4">
-                <a href="{{ url_for('views.leaderboard') }}" class="card-link">
-                    <div class="card feature-card gold-card">
+                <a href="/leaderboard" class="card-link">
+                    <div class="card feature-card">
                         <div class="card-body text-center py-3">
                             <i class="fas fa-trophy feature-icon"></i>
                             <h3 class="card-title mt-2">Leaderboard</h3>
@@ -315,8 +272,8 @@
                 </a>
             </div>
             <div class="col-sm-6 col-lg-4">
-                <a href="/message_board" class="card-link">
-                    <div class="card feature-card orange-card">
+                <a href="/messages" class="card-link">
+                    <div class="card feature-card">
                         <div class="card-body text-center py-3">
                             <i class="fas fa-comments feature-icon"></i>
                             <h3 class="card-title mt-2">Messages</h3>
@@ -326,8 +283,8 @@
                 </a>
             </div>
             <div class="col-sm-6 col-lg-4">
-                <a href="/posts" class="card-link">
-                    <div class="card feature-card rose-card">
+                <a href="/feed" class="card-link">
+                    <div class="card feature-card">
                         <div class="card-body text-center py-3">
                             <i class="fas fa-stream feature-icon"></i>
                             <h3 class="card-title mt-2">Feed</h3>
@@ -337,12 +294,23 @@
                 </a>
             </div>
             <div class="col-sm-6 col-lg-4">
-                <a href="{{ url_for('views.chat') }}" class="card-link">
-                    <div class="card feature-card coral-card">
+                <a href="/chat" class="card-link">
+                    <div class="card feature-card">
                         <div class="card-body text-center py-3">
                             <i class="fas fa-robot feature-icon"></i>
                             <h3 class="card-title mt-2">AI Coach</h3>
                             <p class="card-text">Get personalized guidance and motivation</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+                <a href="/challenges" class="card-link">
+                    <div class="card feature-card">
+                        <div class="card-body text-center py-3">
+                            <i class="fas fa-flag-checkered feature-icon"></i>
+                            <h3 class="card-title mt-2">Challenges</h3>
+                            <p class="card-text">Join fitness challenges and compete</p>
                         </div>
                     </div>
                 </a>
