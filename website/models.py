@@ -219,6 +219,48 @@ class ChatMessage(db.Model):
     
     user = db.relationship('User', backref=db.backref('chat_messages', lazy=True))
 
+class Habit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    icon = db.Column(db.String(10), nullable=False)
+    streak = db.Column(db.Integer, default=0)
+    last_checked = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'icon': self.icon,
+            'streak': self.streak,
+            'checkedToday': self.checked_today(),
+            'lastChecked': self.last_checked.isoformat() if self.last_checked else None
+        }
+    
+    def checked_today(self):
+        if not self.last_checked:
+            return False
+        today = datetime.utcnow().date()
+        return self.last_checked.date() == today
+    
+    def check(self):
+        now = datetime.utcnow()
+        if self.last_checked:
+            # If last check was yesterday, increment streak
+            if (now.date() - self.last_checked.date()).days == 1:
+                self.streak += 1
+            # If more than a day has passed, reset streak
+            elif (now.date() - self.last_checked.date()).days > 1:
+                self.streak = 1
+            # If already checked today, do nothing
+            else:
+                return
+        else:
+            self.streak = 1
+        
+        self.last_checked = now
+
 
 
 

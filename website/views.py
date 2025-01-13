@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
 from flask_login import login_required, current_user
-from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity, Challenge, ChallengeParticipant, ChatMessage
+from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity, Challenge, ChallengeParticipant, ChatMessage, Habit
 from . import db
 import json
 import datetime
@@ -1829,3 +1829,37 @@ def set_openai_key():
     
     return redirect(url_for('views.settings'))
 
+@views.route('/habits')
+@login_required
+def habits():
+    return render_template('habit_tracker.html')
+
+@views.route('/api/habits', methods=['GET'])
+@login_required
+def get_habits():
+    habits = Habit.query.filter_by(user_id=current_user.id).all()
+    return jsonify([habit.to_dict() for habit in habits])
+
+@views.route('/api/habits', methods=['POST'])
+@login_required
+def create_habit():
+    data = request.json
+    habit = Habit(
+        user_id=current_user.id,
+        name=data['name'],
+        icon=data['icon']
+    )
+    db.session.add(habit)
+    db.session.commit()
+    return jsonify(habit.to_dict())
+
+@views.route('/api/habits/<int:habit_id>/toggle', methods=['POST'])
+@login_required
+def toggle_habit(habit_id):
+    habit = Habit.query.get_or_404(habit_id)
+    if habit.user_id != current_user.id:
+        abort(403)
+    
+    habit.check()
+    db.session.commit()
+    return jsonify(habit.to_dict())
