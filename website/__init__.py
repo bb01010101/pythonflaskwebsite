@@ -28,7 +28,23 @@ def create_app():
         # Handle potential "postgres://" style URLs
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        
+        # Add SSL mode to URL if not already present
+        if '?sslmode=' not in DATABASE_URL:
+            DATABASE_URL += '?sslmode=require'
+        
         app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+        
+        # Configure SSL options
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'connect_args': {
+                'sslmode': 'require',
+                'connect_timeout': 30
+            },
+            'pool_pre_ping': True,
+            'pool_recycle': 300,
+            'pool_timeout': 30
+        }
     else:
         # Fallback for development
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
