@@ -82,7 +82,7 @@ class MetricPreference(db.Model):
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, default=datetime.date.today)
+    date = db.Column(db.Date, default=date.today)
     sleep_hours = db.Column(db.Float, default=0)
     calories = db.Column(db.Integer, default=0)
     water_intake = db.Column(db.Integer, default=0)
