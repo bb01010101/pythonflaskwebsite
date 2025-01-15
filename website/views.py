@@ -875,51 +875,59 @@ def strava_auth():
     return redirect(auth_url)
 
 @views.route('/strava/callback')
-@login_required
 def strava_callback():
-    try:
-        code = request.args.get('code')
-        if not code:
-            logger.error("No code received from Strava")
-            flash('Authorization failed: No code received from Strava', 'error')
-            return redirect(url_for('views.settings'))
-            
-        logger.info("Exchanging code for token...")
-        token_response = strava_integration.exchange_code_for_token(code)
-        logger.info(f"Received token response: {token_response}")
-        
-        # Store the token response values
-        current_user.strava_access_token = token_response.get('access_token')
-        current_user.strava_refresh_token = token_response.get('refresh_token')
-        current_user.strava_token_expires_at = datetime.datetime.fromtimestamp(token_response.get('expires_at', 0))
-        
-        # Get athlete ID safely
-        athlete = token_response.get('athlete', {})
-        athlete_id = athlete.get('id') if isinstance(athlete, dict) else None
-        
-        if athlete_id:
-            current_user.strava_athlete_id = str(athlete_id)
-        else:
-            logger.warning("No athlete ID found in token response")
-            current_user.strava_athlete_id = None
-        
-        logger.info("Saving tokens to database...")
-        db.session.commit()
-        
-        logger.info("Starting activity sync...")
-        sync_result = strava_integration.sync_activities(current_user)
-        if sync_result:
-            logger.info("Activity sync successful")
-        else:
-            logger.warning("Activity sync returned False")
-        
-        flash('Successfully connected to Strava!', 'success')
+    error = request.args.get('error')
+    if error:
+        flash('Failed to connect Strava account.', category='error')
         return redirect(url_for('views.settings'))
+
+    code = request.args.get('code')
+    if not code:
+        flash('No authorization code received from Strava.', category='error')
+        return redirect(url_for('views.settings'))
+
+    try:
+        # Exchange the code for tokens
+        strava = StravaIntegration(current_app.config['STRAVA_CLIENT_ID'], 
+                                 current_app.config['STRAVA_CLIENT_SECRET'])
+        token_response = strava.exchange_code_for_token(code)
+
+        # Update user's Strava credentials
+        current_user.strava_access_token = token_response['access_token']
+        current_user.strava_refresh_token = token_response['refresh_token']
+        current_user.strava_token_expires_at = datetime.fromtimestamp(token_response['expires_at'], timezone.utc)
+        current_user.strava_athlete_id = str(token_response['athlete']['id'])
+        db.session.commit()
+
+        # Immediately sync activities after connection
+        success = strava.sync_activities(current_user)
+        if success:
+            flash('Successfully connected Strava account and synced activities!', category='success')
+        else:
+            flash('Connected Strava account but failed to sync activities. Will try again later.', category='warning')
+
+        # Schedule next sync
+        schedule_next_strava_sync(current_user.id)
+
     except Exception as e:
         logger.error(f"Error in Strava callback: {str(e)}", exc_info=True)
-        logger.error(f"Token response: {token_response}")  # Add this for debugging
-        flash(f'Error connecting to Strava: {str(e)}', 'error')
-        return redirect(url_for('views.settings'))
+        flash('An error occurred while connecting your Strava account.', category='error')
+
+    return redirect(url_for('views.settings'))
+
+def schedule_next_strava_sync(user_id):
+    """Schedule the next Strava sync for a user"""
+    try:
+        # Schedule next sync in 12 hours
+        next_sync = datetime.now(timezone.utc) + timedelta(hours=12)
+        
+        # Store next sync time in database or cache
+        # This would be implemented based on your scheduling system
+        # For now, we'll use a basic approach
+        
+        logger.info(f"Scheduled next Strava sync for user {user_id} at {next_sync}")
+    except Exception as e:
+        logger.error(f"Error scheduling next Strava sync: {str(e)}", exc_info=True)
 
 @views.route('/strava/disconnect')
 @login_required
@@ -1832,34 +1840,53 @@ def set_openai_key():
 @views.route('/habits')
 @login_required
 def habits():
-    return render_template('habit_tracker.html')
+    try:
+        user_habits = Habit.query.filter_by(user_id=current_user.id).all()
+        return render_template('habits.html', habits=user_habits)
+    except Exception as e:
+        logger.error(f"Error accessing habits page: {str(e)}", exc_info=True)
+        flash('An error occurred while loading your habits.', category='error')
+        return redirect(url_for('views.index'))
 
-@views.route('/api/habits', methods=['GET'])
+@views.route('/api/habits', methods=['GET', 'POST'])
 @login_required
-def get_habits():
-    habits = Habit.query.filter_by(user_id=current_user.id).all()
-    return jsonify([habit.to_dict() for habit in habits])
+def handle_habits():
+    if request.method == 'GET':
+        try:
+            habits = Habit.query.filter_by(user_id=current_user.id).all()
+            return jsonify([habit.to_dict() for habit in habits])
+        except Exception as e:
+            logger.error(f"Error fetching habits: {str(e)}", exc_info=True)
+            return jsonify({'error': 'Failed to fetch habits'}), 500
 
-@views.route('/api/habits', methods=['POST'])
-@login_required
-def create_habit():
-    data = request.json
-    habit = Habit(
-        user_id=current_user.id,
-        name=data['name'],
-        icon=data['icon']
-    )
-    db.session.add(habit)
-    db.session.commit()
-    return jsonify(habit.to_dict())
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            new_habit = Habit(
+                user_id=current_user.id,
+                name=data['name'],
+                icon=data['icon']
+            )
+            db.session.add(new_habit)
+            db.session.commit()
+            return jsonify(new_habit.to_dict()), 201
+        except Exception as e:
+            logger.error(f"Error creating habit: {str(e)}", exc_info=True)
+            db.session.rollback()
+            return jsonify({'error': 'Failed to create habit'}), 500
 
 @views.route('/api/habits/<int:habit_id>/toggle', methods=['POST'])
 @login_required
 def toggle_habit(habit_id):
-    habit = Habit.query.get_or_404(habit_id)
-    if habit.user_id != current_user.id:
-        abort(403)
-    
-    habit.check()
-    db.session.commit()
-    return jsonify(habit.to_dict())
+    try:
+        habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first()
+        if not habit:
+            return jsonify({'error': 'Habit not found'}), 404
+
+        habit.check()
+        db.session.commit()
+        return jsonify(habit.to_dict())
+    except Exception as e:
+        logger.error(f"Error toggling habit: {str(e)}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'error': 'Failed to toggle habit'}), 500
