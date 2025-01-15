@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from os import path
 from flask_login import LoginManager
 from flask_migrate import Migrate
-import datetime
+from datetime import datetime, date, timezone
 import os
 import logging
 
@@ -110,9 +110,9 @@ def create_app():
             return ''
 
         try:
-            now = datetime.datetime.now(datetime.timezone.utc)
+            now = datetime.now(timezone.utc)
             if timestamp.tzinfo is None:
-                timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
 
             diff = now - timestamp
 
