@@ -1842,11 +1842,11 @@ def set_openai_key():
 def habits():
     try:
         user_habits = Habit.query.filter_by(user_id=current_user.id).all()
-        return render_template('habits.html', user=current_user, habits=user_habits)
+        return render_template('habits.html', habits=user_habits)
     except Exception as e:
         logger.error(f"Error accessing habits page: {str(e)}", exc_info=True)
         flash('An error occurred while loading your habits.', category='error')
-        return redirect(url_for('views.home'))
+        return redirect(url_for('views.index'))
 
 @views.route('/api/habits', methods=['GET', 'POST'])
 @login_required
