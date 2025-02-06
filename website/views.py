@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity, Challenge, ChallengeParticipant, ChatMessage
 from . import db
 import json
-import datetime
+from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
 import io
@@ -78,14 +78,14 @@ def fix_timestamp(timestamp):
         Corrected timestamp with proper timezone and year
     """
     if timestamp is None:
-        return datetime.datetime.now(datetime.timezone.utc)
+        return datetime.now(datetime.timezone.utc)
     
     # If timestamp has no timezone info, assume it's UTC
     if timestamp.tzinfo is None:
         timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
     
     # Fix future dates by setting them to current year
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.now(datetime.timezone.utc)
     if timestamp.year > now.year:
         return timestamp.replace(year=now.year)
     return timestamp
@@ -109,7 +109,7 @@ def convert_to_user_timezone(dt):
 def get_user_local_date():
     """Get the current date in Eastern Time"""
     eastern_tz = pytz.timezone('America/New_York')
-    return datetime.datetime.now(eastern_tz).date()
+    return datetime.now(eastern_tz).date()
 
 @views.route('/')
 def home():
@@ -397,7 +397,7 @@ def message_board():
         message.timestamp = fix_timestamp(message.timestamp)
         
         # Get current time in UTC
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.now(datetime.timezone.utc)
         diff = now - message.timestamp
         
         # Format relative time
@@ -440,7 +440,7 @@ def send_message():
         message = Message(
             content=content,
             user_id=current_user.id,
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
+            timestamp=datetime.now(datetime.timezone.utc)
         )
         db.session.add(message)
         db.session.commit()
@@ -476,7 +476,7 @@ def get_messages():
         serialized_messages = []
         for message in messages:
             message.timestamp = fix_timestamp(message.timestamp)
-            now = datetime.datetime.now(datetime.timezone.utc)
+            now = datetime.now(datetime.timezone.utc)
             diff = now - message.timestamp
             
             if diff.days > 365:
@@ -541,7 +541,7 @@ def create_post():
             image_data=image_data,
             image_filename=image_filename,
             user_id=current_user.id,
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
+            timestamp=datetime.now(datetime.timezone.utc)
         )
         
         db.session.add(new_post)
@@ -891,7 +891,7 @@ def strava_callback():
         # Store the token response values
         current_user.strava_access_token = token_response.get('access_token')
         current_user.strava_refresh_token = token_response.get('refresh_token')
-        current_user.strava_token_expires_at = datetime.datetime.fromtimestamp(
+        current_user.strava_token_expires_at = datetime.fromtimestamp(
             token_response.get('expires_at', 0)
         ).replace(tzinfo=datetime.timezone.utc)
         
@@ -906,7 +906,7 @@ def strava_callback():
             current_user.strava_athlete_id = None
         
         # Add last sync timestamp
-        current_user.strava_last_sync = datetime.datetime.now(datetime.timezone.utc)
+        current_user.strava_last_sync = datetime.now(datetime.timezone.utc)
         
         logger.info("Saving tokens to database...")
         db.session.commit()
@@ -952,7 +952,7 @@ def strava_sync():
     try:
         # Check if we need to sync (either manual sync or last sync was > 24 hours ago)
         last_sync = current_user.strava_last_sync
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.now(datetime.timezone.utc)
         should_sync = (
             not last_sync or
             (now - last_sync).total_seconds() > 24 * 60 * 60 or
@@ -999,111 +999,90 @@ def test_strava_data():
 @views.route('/leaderboard')
 @login_required
 def leaderboard():
-    metric = request.args.get('metric', 'running_mileage')
-    timeframe = request.args.get('timeframe', 'week')
+    selected_metric = request.args.get('metric', 'running_mileage')
+    selected_timeframe = request.args.get('timeframe', 'week')
     
-    user_tz = get_user_timezone()
-    today = datetime.datetime.now(user_tz).date()
-    
-    # Calculate date ranges in user's timezone
-    if timeframe == 'day':
-        start_date = today
-        end_date = today
-    elif timeframe == 'week':
-        start_date = today - datetime.timedelta(days=today.weekday())
-        end_date = today
-    elif timeframe == 'month':
-        start_date = today.replace(day=1)
-        end_date = today
+    # Get the date range based on timeframe
+    end_date = datetime.now().date()
+    if selected_timeframe == 'day':
+        start_date = end_date
+        timeframe_text = "Today's"
+    elif selected_timeframe == 'week':
+        start_date = end_date - timedelta(days=end_date.weekday())
+        timeframe_text = "This Week's"
+    elif selected_timeframe == 'month':
+        start_date = end_date.replace(day=1)
+        timeframe_text = "This Month's"
     else:  # year
-        start_date = today.replace(month=1, day=1)
-        end_date = today
-    
-    logger.info(f"Leaderboard request - Metric: {metric}, Timeframe: {timeframe}")
-    logger.info(f"Date range: {start_date} to {end_date}")
-    
+        start_date = end_date.replace(month=1, day=1)
+        timeframe_text = "This Year's"
+
+    # Query entries within the date range
+    entries = Entry.query.filter(
+        Entry.date >= start_date,
+        Entry.date <= end_date
+    ).all()
+
+    # Group entries by user
+    user_entries = {}
+    for entry in entries:
+        if entry.user_id not in user_entries:
+            user_entries[entry.user_id] = []
+        user_entries[entry.user_id].append(entry)
+
+    # Calculate scores for each user
     leaderboard_data = []
-    users = User.query.all()
-    
-    for user in users:
-        # Get entries for the user within the date range
-        entries = Entry.query.filter(
-            Entry.user_id == user.id,
-            Entry.date >= start_date,
-            Entry.date <= end_date
-        ).all()
-        
-        # Get Strava activities if metric is running_mileage
-        if metric == 'running_mileage':
-            # Convert dates to datetime with user's timezone
-            start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
-            end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
-            start_datetime = user_tz.localize(start_datetime)
-            end_datetime = user_tz.localize(end_datetime)
-            
-            activities = Activity.query.filter(
-                Activity.user_id == user.id,
-                Activity.date >= start_datetime,
-                Activity.date <= end_datetime
-            ).all()
+    for user_id, user_entries_list in user_entries.items():
+        user = User.query.get(user_id)
+        if not user:
+            continue
+
+        if selected_metric == 'calories':
+            # Calculate average daily adherence for the period
+            total_adherence = sum(entry.get_caloric_adherence() for entry in user_entries_list)
+            score = total_adherence / len(user_entries_list)
+            unit = '%'
         else:
-            activities = []
-        
-        # Calculate total value
-        total_value = 0
-        
-        # Add up values from manual entries
-        for entry in entries:
-            if hasattr(entry, metric):
-                metric_value = getattr(entry, metric)
-                if metric_value is not None:
-                    total_value += metric_value
-        
-        # Add Strava activities if applicable
-        if metric == 'running_mileage':
-            for activity in activities:
-                if activity.distance:
-                    # Convert meters to miles
-                    total_value += activity.distance * 0.000621371
-        
-        # Only add to leaderboard if they have a value greater than 0
-        if total_value > 0:
-            logger.info(f"User {user.username} - {metric}: {total_value}")
-            leaderboard_data.append({
-                'user_id': user.id,
-                'username': user.username,
-                'score': round(float(total_value), 2),
-                'unit': get_metric_unit(metric)
-            })
-    
-    # Sort by score descending
-    if metric == 'screen_time':
-        leaderboard_data.sort(key=lambda x: x['score'])  # Ascending for screen time
+            # For other metrics, sum the values
+            score = sum(getattr(entry, selected_metric) for entry in user_entries_list)
+            if selected_timeframe != 'day':
+                # For longer periods, show daily average for fairness
+                score = score / len(user_entries_list)
+            unit = get_metric_unit(selected_metric)
+
+        leaderboard_data.append({
+            'user_id': user_id,
+            'username': user.username,
+            'score': score,
+            'unit': unit
+        })
+
+    # Sort leaderboard
+    if selected_metric == 'calories':
+        # For calories, sort by how close to 100% adherence (ascending absolute difference from 100)
+        leaderboard_data.sort(key=lambda x: abs(100 - x['score']))
     else:
-        leaderboard_data.sort(key=lambda x: x['score'], reverse=True)  # Descending for other metrics
-    
-    timeframe_text = {
-        'day': 'Today',
-        'week': 'This Week',
-        'month': 'This Month',
-        'year': 'This Year'
-    }.get(timeframe, 'This Week')
-    
+        # For other metrics, sort by score descending
+        leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
+
+    # Prepare available metrics
     available_metrics = [
-        {'id': 'running_mileage', 'name': 'Running Mileage', 'unit': 'miles'},
-        {'id': 'sleep_hours', 'name': 'Sleep Hours', 'unit': 'hours'},
-        {'id': 'calories', 'name': 'Calories', 'unit': 'cal'},
-        {'id': 'water_intake', 'name': 'Water Intake', 'unit': 'oz'},
-        {'id': 'screen_time', 'name': 'Screen Time', 'unit': 'hours'}
+        {'id': 'running_mileage', 'name': 'Running Distance'},
+        {'id': 'calories', 'name': 'Caloric Goal Adherence'},
+        {'id': 'sleep_hours', 'name': 'Sleep Hours'},
+        {'id': 'water_intake', 'name': 'Water Intake'},
+        {'id': 'screen_time', 'name': 'Screen Time'}
     ]
-    
-    return render_template('leaderboard.html',
-                         user=current_user,
-                         leaderboard=leaderboard_data,
-                         selected_metric=metric,
-                         selected_timeframe=timeframe,
-                         timeframe_text=timeframe_text,
-                         available_metrics=available_metrics)
+
+    return render_template(
+        'leaderboard.html',
+        user=current_user,
+        leaderboard=leaderboard_data,
+        available_metrics=available_metrics,
+        selected_metric=selected_metric,
+        selected_timeframe=selected_timeframe,
+        timeframe_text=timeframe_text
+    )
 
 def get_metric_unit(metric):
     """Helper function to get the appropriate unit for each metric"""
@@ -1127,7 +1106,7 @@ def timeago(timestamp):
 
     try:
         user_tz = get_user_timezone()
-        now = datetime.datetime.now(user_tz)
+        now = datetime.now(user_tz)
         
         # Convert timestamp to user's timezone
         if timestamp.tzinfo is None:
@@ -1173,7 +1152,7 @@ def connect_myfitnesspal():
             
             # Sync data immediately
             if myfitnesspal_integration.sync_data(current_user):
-                current_user.myfitnesspal_last_sync = datetime.datetime.now(datetime.timezone.utc)
+                current_user.myfitnesspal_last_sync = datetime.now(datetime.timezone.utc)
                 db.session.commit()
                 flash('Successfully connected to MyFitnessPal and synced data!', 'success')
             else:
@@ -1203,7 +1182,7 @@ def sync_myfitnesspal():
         if myfitnesspal_integration.authenticate(current_user.myfitnesspal_username, current_user.myfitnesspal_password):
             # Sync data
             if myfitnesspal_integration.sync_data(current_user):
-                current_user.myfitnesspal_last_sync = datetime.datetime.now(datetime.timezone.utc)
+                current_user.myfitnesspal_last_sync = datetime.now(datetime.timezone.utc)
                 db.session.commit()
                 flash('Successfully synced MyFitnessPal data!', 'success')
             else:
@@ -1255,8 +1234,8 @@ def challenge_create():
         description = request.form.get('description')
         metric_type = request.form.get('metric_type')
         metric_id = request.form.get('metric_id')
-        start_date = datetime.datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
-        end_date = datetime.datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
+        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
+        end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
         is_public = request.form.get('is_public') == 'true'
         invite_code = request.form.get('invite_code') if not is_public else None
         
@@ -1285,14 +1264,14 @@ def challenge_create():
             return redirect(url_for('views.challenge_create'))
         
         # Get current date without time
-        current_date = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        current_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
         if start_date < current_date:
             flash('Start date cannot be in the past.', category='error')
             return redirect(url_for('views.challenge_create'))
 
         # Maximum challenge duration is 1 year
-        max_end_date = start_date + datetime.timedelta(days=365)
+        max_end_date = start_date + timedelta(days=365)
         if end_date > max_end_date:
             flash('Challenge duration cannot exceed 1 year.', category='error')
             return redirect(url_for('views.challenge_create'))
@@ -1357,7 +1336,7 @@ def challenge_details(challenge_id):
     
     # Get current date in user's timezone
     user_tz = get_user_timezone()
-    today = datetime.datetime.now(user_tz).date()
+    today = datetime.now(user_tz).date()
     
     # Get date range for total timeframe
     start_date = challenge.start_date.date()
@@ -1496,7 +1475,7 @@ def generate_invite_link(challenge_id):
     token = jwt.encode(
         {
             'challenge_id': challenge_id,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)  # Token expires in 7 days
+            'exp': datetime.utcnow() + timedelta(days=7)  # Token expires in 7 days
         },
         current_app.config['SECRET_KEY'],
         algorithm='HS256'
@@ -1533,14 +1512,14 @@ def challenge_leaderboard(challenge_id):
     
     # Get current date in user's timezone
     user_tz = get_user_timezone()
-    today = datetime.datetime.now(user_tz).date()
+    today = datetime.now(user_tz).date()
     
     # Calculate date range based on timeframe
     if timeframe == 'today':
         start_date = today
         end_date = today
     elif timeframe == 'week':
-        start_date = today - datetime.timedelta(days=today.weekday())
+        start_date = today - timedelta(days=today.weekday())
         end_date = today
     else:  # total
         start_date = challenge.start_date.date()
@@ -1641,7 +1620,7 @@ def connect_garmin():
             success_sleep = garmin_integration.sync_sleep_data(current_user)
             
             if success_activities and success_sleep:
-                current_user.garmin_last_sync = datetime.datetime.now(datetime.timezone.utc)
+                current_user.garmin_last_sync = datetime.now(datetime.timezone.utc)
                 db.session.commit()
                 flash('Successfully connected to Garmin and synced data!', 'success')
             else:

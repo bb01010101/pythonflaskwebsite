@@ -119,12 +119,19 @@ class Entry(db.Model):
     date = db.Column(db.Date, default=datetime.date.today)
     sleep_hours = db.Column(db.Float, default=0)
     calories = db.Column(db.Integer, default=0)
+    caloric_goal = db.Column(db.Integer, default=2000)  # Default to 2000 as a reasonable starting point
     water_intake = db.Column(db.Integer, default=0)
     running_mileage = db.Column(db.Float, default=0)
     screen_time = db.Column(db.Float, default=0)
     notes = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     custom_entries = db.relationship('CustomMetricEntry', backref='entry', lazy=True)
+
+    def get_caloric_adherence(self):
+        """Calculate adherence to caloric goal as a percentage"""
+        if not self.caloric_goal:
+            return 0
+        return (self.calories / self.caloric_goal) * 100
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)

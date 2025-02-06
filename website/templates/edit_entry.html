@@ -24,6 +24,12 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="caloric_goal">Daily Caloric Goal:</label>
+                        <input type="number" class="form-control" id="caloric_goal" name="caloric_goal" value="{{ entry.caloric_goal }}" min="0" required>
+                        <small class="form-text text-muted">Set your personal daily caloric goal</small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="hydration">Water Intake (ml):</label>
                         <input type="number" step="1" class="form-control" id="hydration" name="hydration" value="{{ entry.water_intake }}" required>
                     </div>
