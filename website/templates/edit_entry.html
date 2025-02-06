@@ -30,8 +30,14 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="hydration">Water Intake (ml):</label>
-                        <input type="number" step="1" class="form-control" id="hydration" name="hydration" value="{{ entry.water_intake }}" required>
+                        <label for="hydration">Water Intake (ml)</label>
+                        <input type="number" class="form-control" id="hydration" name="hydration" value="{{ entry.water_intake }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="water_goal">Daily Water Goal (ml)</label>
+                        <input type="number" class="form-control" id="water_goal" name="water_goal" value="{{ entry.water_goal }}" min="0" required>
+                        <small class="form-text text-muted">Set your personal daily water intake goal</small>
                     </div>
 
                     <div class="mb-3">
@@ -43,6 +49,17 @@
                                step="0.01" 
                                min="0" 
                                value="{{ entry.running_mileage }}" 
+                               required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cross_training_minutes" class="form-label">Cross Training (minutes)</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="cross_training_minutes" 
+                               name="cross_training_minutes" 
+                               min="0" 
+                               value="{{ entry.cross_training_minutes }}" 
                                required>
                     </div>
 

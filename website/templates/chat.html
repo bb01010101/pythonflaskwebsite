@@ -231,6 +231,50 @@
     .message-content th {
         background: rgba(0,0,0,0.05);
     }
+
+    /* Add animation for new messages */
+    @keyframes messageSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .message-animation {
+        animation: messageSlideIn 0.3s ease-out forwards;
+    }
+
+    /* Add loading indicator */
+    .message.loading {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .loading-dots {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .loading-dots span {
+        width: 8px;
+        height: 8px;
+        background: currentColor;
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
 </style>
 
 <div class="chat-container">
@@ -242,7 +286,7 @@
     <div class="chat-messages" id="chatMessages">
         <div class="message bot">
             <div class="message-content">
-            Hi {{ user.username }}! 👋 I'm your AI health coach. I'm here to help you reach your fitness goals and stay motivated. 
+        Hi {{ user.username }}! 👋 I'm your AI health coach. I'm here to help you reach your fitness goals and stay motivated. 
 
 You can ask me about:
 • 🎯 Your personal goals and progress
@@ -251,6 +295,12 @@ You can ask me about:
 • 😴 Sleep optimization
 • 🥗 Nutrition advice
 • 🎉 Motivation and support
+
+Special commands:
+• Type "motivate me" for personalized motivation
+• Type "tell me a joke" for a fitness-related joke
+• Type "elaborate" or "tell me more" for detailed explanations
+• Type "explain why" for scientific reasoning
 
 What would you like to focus on today?
             </div>
@@ -268,12 +318,12 @@ What would you like to focus on today?
             </div>
         </form>
         <div class="suggestions">
-            <button class="suggestion" onclick="sendSuggestion('Show me my goals')">Show me my goals</button>
-            <button class="suggestion" onclick="sendSuggestion('How am I doing?')">How am I doing?</button>
+            <button class="suggestion" onclick="sendSuggestion('Show me my progress')">Show progress</button>
+            <button class="suggestion" onclick="sendSuggestion('Motivate me')">Motivate me</button>
+            <button class="suggestion" onclick="sendSuggestion('Tell me a joke')">Tell me a joke</button>
             <button class="suggestion" onclick="sendSuggestion('Give me workout tips')">Workout tips</button>
             <button class="suggestion" onclick="sendSuggestion('Nutrition advice')">Nutrition advice</button>
             <button class="suggestion" onclick="sendSuggestion('Sleep tips')">Sleep tips</button>
-            <button class="suggestion" onclick="sendSuggestion('I need motivation')">I need motivation</button>
         </div>
     </div>
 </div>
@@ -325,6 +375,9 @@ What would you like to focus on today?
         chatMessages.appendChild(messageDiv);
         
         scrollToBottom();
+        
+        // Add animation class
+        messageDiv.classList.add('message-animation');
     }
 
     async function sendMessage(event) {
@@ -333,6 +386,12 @@ What would you like to focus on today?
         const message = input.value.trim();
         
         if (message) {
+            // Disable input and button while processing
+            input.disabled = true;
+            const submitButton = event.target.querySelector('button');
+            submitButton.disabled = true;
+            
+            // Add user message immediately
             addMessage(message, false);
             input.value = '';
             
@@ -346,10 +405,22 @@ What would you like to focus on today?
                 });
                 
                 const data = await response.json();
+                
+                // Add bot response with markdown parsing
                 addMessage(data.response, true);
+                
+                // Re-enable input and button
+                input.disabled = false;
+                submitButton.disabled = false;
+                input.focus();
             } catch (error) {
                 console.error('Error:', error);
                 addMessage('Sorry, I encountered an error. Please try again.', true);
+                
+                // Re-enable input and button
+                input.disabled = false;
+                submitButton.disabled = false;
+                input.focus();
             }
         }
     }

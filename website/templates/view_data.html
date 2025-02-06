@@ -67,6 +67,12 @@
                                             <label class="form-check-label" for="col-notes">Notes</label>
                                         </div>
                                     </li>
+                                    <li>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="col-cross-training" data-column="cross-training" checked>
+                                            <label class="form-check-label" for="col-cross-training">Cross Training</label>
+                                        </div>
+                                    </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <div class="d-flex justify-content-between">
@@ -81,44 +87,97 @@
 
                     <!-- Data Table -->
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th class="col-date">Date</th>
-                                    <th class="col-sleep">Sleep Hours</th>
-                                    <th class="col-calories">Calories</th>
-                                    <th class="col-water">Water Intake (oz)</th>
-                                    <th class="col-running">Running (miles)</th>
-                                    <th class="col-screen">Screen Time (hrs)</th>
-                                    <th class="col-notes">Notes</th>
-                                    <th class="col-actions">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for entry in entries %}
-                                <tr>
-                                    <td class="col-date">{{ entry.date.strftime('%b %d, %Y') }}</td>
-                                    <td class="col-sleep">{{ "%.1f"|format(entry.sleep_hours) }}</td>
-                                    <td class="col-calories">{{ entry.calories }}</td>
-                                    <td class="col-water">{{ "%.1f"|format(entry.water_intake) }}</td>
-                                    <td class="col-running">{{ "%.1f"|format(entry.running_mileage) }}</td>
-                                    <td class="col-screen">{{ "%.2f"|format(entry.screen_time) }}</td>
-                                    <td class="col-notes">{{ entry.notes }}</td>
-                                    <td class="col-actions">
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ url_for('views.edit_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{{ url_for('views.delete_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-delete" 
-                                               onclick="return confirm('Are you sure you want to delete this entry?')">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                        {% for day in daily_entries %}
+                        <div class="daily-entry mb-4">
+                            <h4 class="mb-3">{{ day.date.strftime('%B %d, %Y') }}</h4>
+                            <div class="daily-totals mb-3">
+                                <h5>Daily Totals:</h5>
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <strong>Sleep:</strong> {{ "%.1f"|format(day.totals.sleep_hours) }}h
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong>Calories:</strong> {{ day.totals.calories }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong>Water:</strong> {{ day.totals.water_intake }}ml
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong>Running:</strong> {{ "%.2f"|format(day.totals.running_mileage) }}mi
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong>Training:</strong> {{ day.totals.cross_training_minutes }}min
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong>Screen:</strong> {{ "%.1f"|format(day.totals.screen_time) }}h
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if day.entries|length > 1 %}
+                            <div class="individual-entries">
+                                <h6>Individual Entries:</h6>
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-sleep">Sleep Hours</th>
+                                            <th class="col-calories">Calories</th>
+                                            <th class="col-water">Water Intake (ml)</th>
+                                            <th class="col-running">Running (miles)</th>
+                                            <th class="col-cross-training">Cross Training (min)</th>
+                                            <th class="col-screen">Screen Time (hrs)</th>
+                                            <th class="col-notes">Notes</th>
+                                            <th class="col-actions">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in day.entries %}
+                                        <tr>
+                                            <td class="col-sleep">{{ "%.1f"|format(entry.sleep_hours) if entry.sleep_hours != None }}</td>
+                                            <td class="col-calories">{{ entry.calories if entry.calories != None }}</td>
+                                            <td class="col-water">{{ entry.water_intake if entry.water_intake != None }}</td>
+                                            <td class="col-running">{{ "%.2f"|format(entry.running_mileage) if entry.running_mileage != None }}</td>
+                                            <td class="col-cross-training">{{ entry.cross_training_minutes if entry.cross_training_minutes != None }}</td>
+                                            <td class="col-screen">{{ "%.2f"|format(entry.screen_time) if entry.screen_time != None }}</td>
+                                            <td class="col-notes">{{ entry.notes if entry.notes != None }}</td>
+                                            <td class="col-actions">
+                                                <div class="btn-group" role="group">
+                                                    <a href="{{ url_for('views.edit_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('views.delete_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-delete" 
+                                                       onclick="return confirm('Are you sure you want to delete this entry?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="individual-entry">
+                                {% set entry = day.entries[0] %}
+                                <div class="btn-group float-end" role="group">
+                                    <a href="{{ url_for('views.edit_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('views.delete_entry', entry_id=entry.id) }}" class="btn btn-sm theme-btn-delete" 
+                                       onclick="return confirm('Are you sure you want to delete this entry?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                                {% if entry.notes %}
+                                <div class="notes mt-2">
+                                    <strong>Notes:</strong> {{ entry.notes }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <hr>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -193,6 +252,33 @@
         vertical-align: middle;
     }
 
+    .daily-entry {
+        background-color: #fff;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .daily-totals {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+
+    .individual-entries {
+        margin-top: 1rem;
+    }
+
+    .notes {
+        color: #666;
+        font-style: italic;
+    }
+
+    hr {
+        margin: 2rem 0;
+        border-color: rgba(0,0,0,0.1);
+    }
+
     .column-menu {
         min-width: 200px;
         background-color: white;
@@ -253,48 +339,35 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get all checkboxes
-    const checkboxes = document.querySelectorAll('.column-menu input[type="checkbox"]');
-    const selectAllBtn = document.getElementById('selectAll');
-    const deselectAllBtn = document.getElementById('deselectAll');
-
-    // Function to update column visibility
-    function updateColumnVisibility(checkbox) {
-        const columnClass = 'col-' + checkbox.dataset.column;
-        const cells = document.querySelectorAll('.' + columnClass);
+    // Column visibility toggle
+    const toggleColumn = (columnClass, visible) => {
+        const cells = document.querySelectorAll(`.${columnClass}`);
         cells.forEach(cell => {
-            cell.style.display = checkbox.checked ? '' : 'none';
+            cell.style.display = visible ? '' : 'none';
         });
-    }
+    };
 
-    // Add change event listener to each checkbox
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateColumnVisibility(this);
+    // Handle checkbox changes
+    document.querySelectorAll('.column-menu .form-check-input').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const column = e.target.dataset.column;
+            toggleColumn(`col-${column}`, e.target.checked);
         });
     });
 
-    // Select All button
-    selectAllBtn.addEventListener('click', function(e) {
-        e.stopPropagation();  // Prevent dropdown from closing
-        checkboxes.forEach(checkbox => {
+    // Select/Deselect all buttons
+    document.getElementById('selectAll').addEventListener('click', () => {
+        document.querySelectorAll('.column-menu .form-check-input').forEach(checkbox => {
             checkbox.checked = true;
-            updateColumnVisibility(checkbox);
+            toggleColumn(`col-${checkbox.dataset.column}`, true);
         });
     });
 
-    // Deselect All button
-    deselectAllBtn.addEventListener('click', function(e) {
-        e.stopPropagation();  // Prevent dropdown from closing
-        checkboxes.forEach(checkbox => {
+    document.getElementById('deselectAll').addEventListener('click', () => {
+        document.querySelectorAll('.column-menu .form-check-input').forEach(checkbox => {
             checkbox.checked = false;
-            updateColumnVisibility(checkbox);
+            toggleColumn(`col-${checkbox.dataset.column}`, false);
         });
-    });
-
-    // Keep dropdown open when clicking checkboxes
-    document.querySelector('.column-menu').addEventListener('click', function(e) {
-        e.stopPropagation();
     });
 });
 </script>

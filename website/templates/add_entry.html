@@ -22,26 +22,33 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="sleep_hours" class="form-label">Sleep Hours</label>
-                                    <input type="number" class="form-control" id="sleep_hours" name="sleep_hours" step="0.1" min="0" required>
+                                    <input type="number" class="form-control" id="sleep_hours" name="sleep_hours" step="0.1" min="0">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="calories" class="form-label">Calories</label>
-                                    <input type="number" class="form-control" id="calories" name="calories" min="0" required>
+                                    <input type="number" class="form-control" id="calories" name="calories" min="0">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="caloric_goal" class="form-label">Daily Caloric Goal</label>
-                                    <input type="number" class="form-control" id="caloric_goal" name="caloric_goal" min="0" value="2000" required>
+                                    <input type="number" class="form-control" id="caloric_goal" name="caloric_goal" min="0" value="2000">
                                     <small class="form-text text-muted">Set your personal daily caloric goal</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="hydration" class="form-label">Water Intake (oz)</label>
-                                    <input type="number" class="form-control" id="hydration" name="hydration" step="0.1" min="0" required>
+                                    <label for="hydration">Water Intake (ml)</label>
+                                    <input type="number" class="form-control" id="hydration" name="hydration">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="water_goal">Daily Water Goal (ml)</label>
+                                    <input type="number" class="form-control" id="water_goal" name="water_goal" min="0" value="2000">
+                                    <small class="form-text text-muted">Set your personal daily water intake goal</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -53,8 +60,18 @@
                                            name="running_mileage" 
                                            step="0.01" 
                                            min="0" 
-                                           value="{{ entry.running_mileage if entry else 0 }}" 
-                                           required>
+                                           value="{{ entry.running_mileage if entry else '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="cross_training_minutes" class="form-label">Cross Training (minutes)</label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="cross_training_minutes" 
+                                           name="cross_training_minutes" 
+                                           min="0" 
+                                           value="{{ entry.cross_training_minutes if entry else '' }}">
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -62,13 +79,13 @@
                                 <div class="row">
                                     <div class="col-6">
                                         <div class="input-group">
-                                            <input type="number" class="form-control" id="screen_time_hours" name="screen_time_hours" min="0" value="0" required>
+                                            <input type="number" class="form-control" id="screen_time_hours" name="screen_time_hours" min="0" value="0">
                                             <span class="input-group-text">hours</span>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="input-group">
-                                            <input type="number" class="form-control" id="screen_time_minutes" name="screen_time_minutes" min="0" max="59" value="0" required>
+                                            <input type="number" class="form-control" id="screen_time_minutes" name="screen_time_minutes" min="0" max="59" value="0">
                                             <span class="input-group-text">minutes</span>
                                         </div>
                                     </div>

@@ -116,13 +116,15 @@ class MetricPreference(db.Model):
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, default=datetime.date.today())
-    sleep_hours = db.Column(db.Float, default=0)
-    calories = db.Column(db.Integer, default=0)
+    date = db.Column(db.Date, default=lambda: datetime.datetime.now(datetime.timezone.utc).date())
+    sleep_hours = db.Column(db.Float, nullable=True)
+    calories = db.Column(db.Integer, nullable=True)
     caloric_goal = db.Column(db.Integer, default=2000)  # Default to 2000 as a reasonable starting point
-    water_intake = db.Column(db.Integer, default=0)
-    running_mileage = db.Column(db.Float, default=0)
-    screen_time = db.Column(db.Float, default=0)
+    water_intake = db.Column(db.Integer, nullable=True)
+    water_goal = db.Column(db.Integer, default=2000)  # Default to 2000ml as a reasonable starting point
+    running_mileage = db.Column(db.Float, nullable=True)
+    cross_training_minutes = db.Column(db.Integer, nullable=True)
+    screen_time = db.Column(db.Float, nullable=True)
     notes = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     custom_entries = db.relationship('CustomMetricEntry', backref='entry', lazy=True)
@@ -131,7 +133,74 @@ class Entry(db.Model):
         """Calculate adherence to caloric goal as a percentage"""
         if not self.caloric_goal:
             return 0
-        return (self.calories / self.caloric_goal) * 100
+        daily_total = self.get_daily_total('calories')
+        return (daily_total / self.caloric_goal) * 100
+        
+    def get_water_adherence(self):
+        """Calculate adherence to water goal as a percentage"""
+        if not self.water_goal:
+            return 0
+        daily_total = self.get_daily_total('water_intake')
+        return (daily_total / self.water_goal) * 100
+
+    def get_daily_total(self, metric):
+        """Get the total value for a given metric for this entry's date"""
+        entries = Entry.query.filter_by(
+            date=self.date,
+            user_id=self.user_id
+        ).all()
+        
+        total = 0
+        for entry in entries:
+            value = getattr(entry, metric)
+            if value is not None:  # Only add non-null values
+                total += value
+        return total
+
+    @staticmethod
+    def get_daily_totals(user_id, date):
+        """Get all daily totals for a given user and date"""
+        entries = Entry.query.filter_by(
+            date=date,
+            user_id=user_id
+        ).all()
+        
+        totals = {
+            'sleep_hours': 0,
+            'calories': 0,
+            'water_intake': 0,
+            'running_mileage': 0,
+            'cross_training_minutes': 0,
+            'screen_time': 0
+        }
+        
+        goals = {
+            'caloric_goal': 2000,
+            'water_goal': 2000
+        }
+        
+        for entry in entries:
+            # Update totals for non-null values
+            if entry.sleep_hours is not None:
+                totals['sleep_hours'] += entry.sleep_hours
+            if entry.calories is not None:
+                totals['calories'] += entry.calories
+            if entry.water_intake is not None:
+                totals['water_intake'] += entry.water_intake
+            if entry.running_mileage is not None:
+                totals['running_mileage'] += entry.running_mileage
+            if entry.cross_training_minutes is not None:
+                totals['cross_training_minutes'] += entry.cross_training_minutes
+            if entry.screen_time is not None:
+                totals['screen_time'] += entry.screen_time
+            
+            # Update goals with the latest values
+            if entry.caloric_goal:
+                goals['caloric_goal'] = entry.caloric_goal
+            if entry.water_goal:
+                goals['water_goal'] = entry.water_goal
+        
+        return {**totals, **goals}
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)

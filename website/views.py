@@ -283,70 +283,137 @@ def view_charts():
 @views.route('/view_data', methods=['GET', 'POST'])
 @login_required
 def view_data():
-    entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.date.desc()).all()
-    logger.info(f"Found {len(entries)} entries for user {current_user.id}")
-    for entry in entries:
-        logger.info(f"Entry {entry.id}: date={entry.date}, miles={entry.running_mileage}")
-    return render_template("view_data.html", user=current_user, entries=entries)
+    # Get entries and calculate totals in a single query using SQL window functions
+    entries = db.session.query(
+        Entry,
+        db.func.sum(Entry.sleep_hours).over(partition_by=Entry.date).label('total_sleep'),
+        db.func.sum(Entry.calories).over(partition_by=Entry.date).label('total_calories'),
+        db.func.sum(Entry.water_intake).over(partition_by=Entry.date).label('total_water'),
+        db.func.sum(Entry.running_mileage).over(partition_by=Entry.date).label('total_miles'),
+        db.func.sum(Entry.screen_time).over(partition_by=Entry.date).label('total_screen'),
+        db.func.sum(Entry.cross_training_minutes).over(partition_by=Entry.date).label('total_cross_training')
+    ).filter(Entry.user_id == current_user.id).order_by(Entry.date.desc(), Entry.id.desc()).all()
+    
+    # Group entries efficiently using a dictionary
+    daily_entries = {}
+    for entry_data in entries:
+        entry = entry_data[0]
+        date = entry.date
+        
+        if date not in daily_entries:
+            daily_entries[date] = {
+                'date': date,
+                'totals': {
+                    'sleep_hours': entry_data.total_sleep,
+                    'calories': entry_data.total_calories,
+                    'water_intake': entry_data.total_water,
+                    'running_mileage': entry_data.total_miles,
+                    'screen_time': entry_data.total_screen,
+                    'cross_training_minutes': entry_data.total_cross_training
+                },
+                'entries': []
+            }
+        daily_entries[date]['entries'].append(entry)
+    
+    # Convert to list - already sorted by date desc from the query
+    daily_entries = list(daily_entries.values())
+    
+    return render_template(
+        "view_data.html",
+        user=current_user,
+        daily_entries=daily_entries
+    )
 
 @views.route('/add_entry', methods=['GET', 'POST'])
 @login_required
 def add_entry():
     if request.method == 'POST':
         # Convert date string to a datetime.date object
-        date_str = request.form.get('date', datetime.date.today().isoformat())
-        date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+        date_str = request.form.get('date')
+        date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date()
         
-        sleep_hours = float(request.form.get('sleep_hours'))
-        calories = int(request.form.get('calories'))
-        water_intake = float(request.form.get('hydration'))
-        running_mileage = float(request.form.get('running_mileage'))
+        # Build new entry data efficiently
+        new_entry_data = {
+            'date': date,
+            'user_id': current_user.id
+        }
         
-        # Convert screen time from hours and minutes to decimal hours
-        screen_time_hours = int(request.form.get('screen_time_hours', 0))
-        screen_time_minutes = int(request.form.get('screen_time_minutes', 0))
-        screen_time = round(screen_time_hours + (screen_time_minutes / 60.0), 2)  # Truncate to 2 decimal places
+        # Process numeric fields efficiently
+        numeric_fields = {
+            'sleep_hours': float,
+            'calories': int,
+            'water_intake': int,
+            'running_mileage': float,
+            'cross_training_minutes': int
+        }
         
-        notes = request.form.get('notes')
-
-        print(f"Adding entry for user {current_user.id} on date {date}")  # Debug print
-        print(f"Data: sleep={sleep_hours}, calories={calories}, water={water_intake}, miles={running_mileage}, screen={screen_time}")  # Debug print
-
-        # Check if an entry for this date and user already exists
-        existing_entry = Entry.query.filter_by(
-            date=date,
-            user_id=current_user.id  # Add user_id to the filter
-        ).first()
+        # Process all numeric fields in a single loop
+        for field, convert_func in numeric_fields.items():
+            value = request.form.get(field, '').strip()
+            if value:
+                try:
+                    new_entry_data[field] = convert_func(value)
+                except ValueError:
+                    continue
         
-        if existing_entry:
-            print(f"Updating existing entry {existing_entry.id}")  # Debug print
-            # Update the existing entry instead of creating a new one
-            existing_entry.sleep_hours = sleep_hours
-            existing_entry.calories = calories
-            existing_entry.water_intake = water_intake
-            existing_entry.running_mileage = running_mileage
-            existing_entry.screen_time = screen_time
-            existing_entry.notes = notes
-            db.session.commit()
-            flash('Entry updated successfully!', category='success')
-            return redirect(url_for('views.view_data'))
+        # Handle goals separately since they depend on their parent fields
+        if 'calories' in new_entry_data:
+            caloric_goal = request.form.get('caloric_goal', '').strip()
+            if caloric_goal:
+                try:
+                    new_entry_data['caloric_goal'] = int(caloric_goal)
+                except ValueError:
+                    pass
         
-        # Add a new entry
-        new_entry = Entry(
-            date=date,
-            sleep_hours=sleep_hours,
-            calories=calories,
-            water_intake=water_intake,
-            running_mileage=running_mileage,
-            screen_time=screen_time,
-            notes=notes,
-            user_id=current_user.id
-        )
-        print(f"Creating new entry for user {current_user.id}")  # Debug print
+        if 'water_intake' in new_entry_data:
+            water_goal = request.form.get('water_goal', '').strip()
+            if water_goal:
+                try:
+                    new_entry_data['water_goal'] = int(water_goal)
+                except ValueError:
+                    pass
+        
+        # Handle screen time efficiently
+        screen_hours = request.form.get('screen_time_hours', '').strip()
+        screen_minutes = request.form.get('screen_time_minutes', '').strip()
+        
+        if screen_hours or screen_minutes:
+            try:
+                hours = float(screen_hours) if screen_hours else 0
+                minutes = float(screen_minutes) if screen_minutes else 0
+                if hours > 0 or minutes > 0:
+                    new_entry_data['screen_time'] = round(hours + (minutes / 60.0), 2)
+            except ValueError:
+                pass
+        
+        # Handle notes if present
+        notes = request.form.get('notes', '').strip()
+        if notes:
+            new_entry_data['notes'] = notes
+        
+        # Create and add the new entry in a single operation
+        new_entry = Entry(**new_entry_data)
         db.session.add(new_entry)
         db.session.commit()
-        flash('Entry added successfully!', category='success')
-        return redirect(url_for('views.home'))
+        
+        # Prepare feedback message efficiently
+        feedback_parts = []
+        if 'sleep_hours' in new_entry_data:
+            feedback_parts.append(f"sleep: {new_entry_data['sleep_hours']}h")
+        if 'calories' in new_entry_data:
+            feedback_parts.append(f"calories: {new_entry_data['calories']}")
+        if 'water_intake' in new_entry_data:
+            feedback_parts.append(f"water: {new_entry_data['water_intake']}ml")
+        if 'running_mileage' in new_entry_data:
+            feedback_parts.append(f"miles: {new_entry_data['running_mileage']:.2f}")
+        if 'cross_training_minutes' in new_entry_data:
+            feedback_parts.append(f"cross training: {new_entry_data['cross_training_minutes']}min")
+        if 'screen_time' in new_entry_data:
+            feedback_parts.append(f"screen time: {new_entry_data['screen_time']}h")
+        
+        flash("Entry added! " + ", ".join(feedback_parts), category='success')
+        return redirect(url_for('views.view_data'))
+        
     return render_template('add_entry.html', user=current_user)
 
 @views.route('/edit/<int:entry_id>', methods=['GET', 'POST'])
@@ -355,21 +422,90 @@ def edit_entry(entry_id):
     entry = Entry.query.get_or_404(entry_id)
     
     if request.method == 'POST':
-        entry.date = datetime.datetime.strptime(request.form['date'], '%Y-%m-%d').date()
-        entry.sleep_hours = float(request.form['sleep_hours'])
-        entry.calories = int(request.form['calories'])
-        entry.water_intake = float(request.form['hydration'])
-        entry.running_mileage = float(request.form['running_mileage'])
+        # Process date if provided
+        date_str = request.form.get('date', '').strip()
+        if date_str:
+            entry.date = datetime.strptime(date_str, '%Y-%m-%d').date()
         
-        # Convert screen time from hours and minutes to decimal hours
-        screen_time_hours = int(request.form.get('screen_time_hours', 0))
-        screen_time_minutes = int(request.form.get('screen_time_minutes', 0))
-        entry.screen_time = round(screen_time_hours + (screen_time_minutes / 60.0), 2)  # Truncate to 2 decimal places
+        # Process numeric fields efficiently
+        numeric_fields = {
+            'sleep_hours': float,
+            'calories': int,
+            'water_intake': int,
+            'running_mileage': float,
+            'cross_training_minutes': int
+        }
         
-        entry.notes = request.form['notes']
+        # Track which fields were updated for feedback message
+        updated_fields = {}
         
-        db.session.commit()  # Save the changes
-        flash('Entry updated successfully!', category='success')
+        # Process all numeric fields in a single loop
+        for field, convert_func in numeric_fields.items():
+            value = request.form.get(field, '').strip()
+            if value:
+                try:
+                    new_value = convert_func(value)
+                    setattr(entry, field, new_value)
+                    updated_fields[field] = new_value
+                except ValueError:
+                    continue
+        
+        # Handle goals efficiently
+        if 'calories' in updated_fields:
+            caloric_goal = request.form.get('caloric_goal', '').strip()
+            if caloric_goal:
+                try:
+                    entry.caloric_goal = int(caloric_goal)
+                except ValueError:
+                    pass
+        
+        if 'water_intake' in updated_fields:
+            water_goal = request.form.get('water_goal', '').strip()
+            if water_goal:
+                try:
+                    entry.water_goal = int(water_goal)
+                except ValueError:
+                    pass
+        
+        # Handle screen time efficiently
+        screen_hours = request.form.get('screen_time_hours', '').strip()
+        screen_minutes = request.form.get('screen_time_minutes', '').strip()
+        
+        if screen_hours or screen_minutes:
+            try:
+                hours = float(screen_hours) if screen_hours else 0
+                minutes = float(screen_minutes) if screen_minutes else 0
+                if hours > 0 or minutes > 0:
+                    screen_time = round(hours + (minutes / 60.0), 2)
+                    entry.screen_time = screen_time
+                    updated_fields['screen_time'] = screen_time
+            except ValueError:
+                pass
+        
+        # Handle notes if present
+        notes = request.form.get('notes', '').strip()
+        if notes:
+            entry.notes = notes
+        
+        # Commit changes in a single operation
+        db.session.commit()
+        
+        # Prepare feedback message efficiently
+        feedback_parts = []
+        if 'sleep_hours' in updated_fields:
+            feedback_parts.append(f"sleep: {updated_fields['sleep_hours']}h")
+        if 'calories' in updated_fields:
+            feedback_parts.append(f"calories: {updated_fields['calories']}")
+        if 'water_intake' in updated_fields:
+            feedback_parts.append(f"water: {updated_fields['water_intake']}ml")
+        if 'running_mileage' in updated_fields:
+            feedback_parts.append(f"miles: {updated_fields['running_mileage']:.2f}")
+        if 'cross_training_minutes' in updated_fields:
+            feedback_parts.append(f"cross training: {updated_fields['cross_training_minutes']}min")
+        if 'screen_time' in updated_fields:
+            feedback_parts.append(f"screen time: {updated_fields['screen_time']}h")
+        
+        flash("Entry updated! " + ", ".join(feedback_parts), category='success')
         return redirect(url_for('views.view_data'))
 
     return render_template('edit_entry.html', entry=entry, user=current_user)
@@ -1042,6 +1178,11 @@ def leaderboard():
             total_adherence = sum(entry.get_caloric_adherence() for entry in user_entries_list)
             score = total_adherence / len(user_entries_list)
             unit = '%'
+        elif selected_metric == 'water_intake':
+            # Calculate average daily adherence for the period
+            total_adherence = sum(entry.get_water_adherence() for entry in user_entries_list)
+            score = total_adherence / len(user_entries_list)
+            unit = '%'
         else:
             # For other metrics, sum the values
             score = sum(getattr(entry, selected_metric) for entry in user_entries_list)
@@ -1058,8 +1199,8 @@ def leaderboard():
         })
 
     # Sort leaderboard
-    if selected_metric == 'calories':
-        # For calories, sort by how close to 100% adherence (ascending absolute difference from 100)
+    if selected_metric in ['calories', 'water_intake']:
+        # For calories and water intake, sort by how close to 100% adherence (ascending absolute difference from 100)
         leaderboard_data.sort(key=lambda x: abs(100 - x['score']))
     else:
         # For other metrics, sort by score descending
@@ -1069,8 +1210,8 @@ def leaderboard():
     available_metrics = [
         {'id': 'running_mileage', 'name': 'Running Distance'},
         {'id': 'calories', 'name': 'Caloric Goal Adherence'},
+        {'id': 'water_intake', 'name': 'Water Goal Adherence'},
         {'id': 'sleep_hours', 'name': 'Sleep Hours'},
-        {'id': 'water_intake', 'name': 'Water Intake'},
         {'id': 'screen_time', 'name': 'Screen Time'}
     ]
 
