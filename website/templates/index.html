@@ -214,6 +214,89 @@
         color: white !important;
         opacity: 0.9;
     }
+
+    /* Add these new styles */
+    .insights-title {
+        color: var(--primary-color);
+        font-weight: 600;
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .insights-text {
+        color: #666;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+
+    .metric-badge {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+
+    .metric-badge:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .dark-mode .insights-text {
+        color: #e0e0e0;
+    }
+
+    .dark-mode .metric-badge {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .metric-badge-link {
+        text-decoration: none;
+    }
+
+    .charts-preview-section {
+        padding: 2rem 0;
+    }
+
+    .charts-preview-title {
+        color: var(--primary-color);
+        font-weight: 600;
+        margin-bottom: 2rem;
+    }
+
+    .chart-preview-card {
+        background: linear-gradient(135deg, #9b4dca 0%, #8a2be2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .chart-preview-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .chart-preview-card h4 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .chart-preview-card p {
+        font-size: 0.95rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+
+    .dark-mode .chart-preview-card {
+        background: linear-gradient(135deg, #8a2be2 0%, #9b4dca 100%);
+    }
 </style>
 
 <!-- Splash Screen -->
@@ -264,6 +347,35 @@
                     </div>
                 </a>
             </div>
+        </div>
+
+        <div class="text-center mt-4 mb-5">
+            <h3 class="insights-title">Your Health Journey at a Glance</h3>
+            <p class="insights-text">Track multiple health metrics including:</p>
+            <div class="row justify-content-center mt-3">
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="/view_charts" class="metric-badge-link">
+                            <span class="metric-badge"><i class="fas fa-running me-2"></i>Running Distance</span>
+                        </a>
+                        <a href="/view_charts" class="metric-badge-link">
+                            <span class="metric-badge"><i class="fas fa-bed me-2"></i>Sleep Quality</span>
+                        </a>
+                        <a href="/view_charts" class="metric-badge-link">
+                            <span class="metric-badge"><i class="fas fa-fire me-2"></i>Calories</span>
+                        </a>
+                        <a href="/view_charts" class="metric-badge-link">
+                            <span class="metric-badge"><i class="fas fa-tint me-2"></i>Hydration</span>
+                        </a>
+                        <a href="/view_charts" class="metric-badge-link">
+                            <span class="metric-badge"><i class="fas fa-mobile-alt me-2"></i>Screen Time</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 justify-content-center">
             <div class="col-sm-6 col-lg-4">
                 <a href="/leaderboard" class="card-link">
                     <div class="card feature-card">
@@ -324,6 +436,35 @@
         {% if not user.is_authenticated %}
         <div class="row mt-4">
             <div class="col-md-8 mx-auto text-center">
+                <div class="charts-preview-section mb-5">
+                    <h2 class="charts-preview-title mb-4">Visualize Your Progress</h2>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="chart-preview-card">
+                                <h4><i class="fas fa-calendar-day me-2"></i>Daily View</h4>
+                                <p>Track your daily achievements and monitor short-term progress with detailed day-by-day breakdowns.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="chart-preview-card">
+                                <h4><i class="fas fa-calendar-week me-2"></i>Weekly Analysis</h4>
+                                <p>See your weekly trends and patterns to optimize your training and recovery cycles.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="chart-preview-card">
+                                <h4><i class="fas fa-calendar-alt me-2"></i>Monthly Overview</h4>
+                                <p>Get insights into your long-term progress and identify areas for improvement.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="chart-preview-card">
+                                <h4><i class="fas fa-chart-line me-2"></i>Yearly Progress</h4>
+                                <p>Celebrate your achievements and track your fitness journey throughout the year.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <h1 class="display-4">Welcome to Health Tracker</h1>
                 <p class="lead">Please log in or sign up to start tracking your health metrics.</p>
                 <div class="mt-4">

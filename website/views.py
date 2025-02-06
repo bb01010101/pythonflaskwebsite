@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from .models import User, Entry, Message, Post, Like, Comment, MetricPreference, CustomMetric, CustomMetricEntry, Activity, Challenge, ChallengeParticipant, ChatMessage
 from . import db
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from werkzeug.utils import secure_filename
 import io
@@ -78,14 +78,14 @@ def fix_timestamp(timestamp):
         Corrected timestamp with proper timezone and year
     """
     if timestamp is None:
-        return datetime.now(datetime.timezone.utc)
+        return datetime.now(timezone.utc)
     
     # If timestamp has no timezone info, assume it's UTC
     if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
     
     # Fix future dates by setting them to current year
-    now = datetime.now(datetime.timezone.utc)
+    now = datetime.now(timezone.utc)
     if timestamp.year > now.year:
         return timestamp.replace(year=now.year)
     return timestamp
@@ -397,7 +397,7 @@ def message_board():
         message.timestamp = fix_timestamp(message.timestamp)
         
         # Get current time in UTC
-        now = datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         diff = now - message.timestamp
         
         # Format relative time
@@ -440,7 +440,7 @@ def send_message():
         message = Message(
             content=content,
             user_id=current_user.id,
-            timestamp=datetime.now(datetime.timezone.utc)
+            timestamp=datetime.now(timezone.utc)
         )
         db.session.add(message)
         db.session.commit()
@@ -476,7 +476,7 @@ def get_messages():
         serialized_messages = []
         for message in messages:
             message.timestamp = fix_timestamp(message.timestamp)
-            now = datetime.now(datetime.timezone.utc)
+            now = datetime.now(timezone.utc)
             diff = now - message.timestamp
             
             if diff.days > 365:
@@ -541,7 +541,7 @@ def create_post():
             image_data=image_data,
             image_filename=image_filename,
             user_id=current_user.id,
-            timestamp=datetime.now(datetime.timezone.utc)
+            timestamp=datetime.now(timezone.utc)
         )
         
         db.session.add(new_post)
@@ -893,7 +893,7 @@ def strava_callback():
         current_user.strava_refresh_token = token_response.get('refresh_token')
         current_user.strava_token_expires_at = datetime.fromtimestamp(
             token_response.get('expires_at', 0)
-        ).replace(tzinfo=datetime.timezone.utc)
+        ).replace(tzinfo=timezone.utc)
         
         # Get athlete ID safely
         athlete = token_response.get('athlete', {})
@@ -906,7 +906,7 @@ def strava_callback():
             current_user.strava_athlete_id = None
         
         # Add last sync timestamp
-        current_user.strava_last_sync = datetime.now(datetime.timezone.utc)
+        current_user.strava_last_sync = datetime.now(timezone.utc)
         
         logger.info("Saving tokens to database...")
         db.session.commit()
@@ -952,7 +952,7 @@ def strava_sync():
     try:
         # Check if we need to sync (either manual sync or last sync was > 24 hours ago)
         last_sync = current_user.strava_last_sync
-        now = datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         should_sync = (
             not last_sync or
             (now - last_sync).total_seconds() > 24 * 60 * 60 or
@@ -1152,7 +1152,7 @@ def connect_myfitnesspal():
             
             # Sync data immediately
             if myfitnesspal_integration.sync_data(current_user):
-                current_user.myfitnesspal_last_sync = datetime.now(datetime.timezone.utc)
+                current_user.myfitnesspal_last_sync = datetime.now(timezone.utc)
                 db.session.commit()
                 flash('Successfully connected to MyFitnessPal and synced data!', 'success')
             else:
@@ -1182,7 +1182,7 @@ def sync_myfitnesspal():
         if myfitnesspal_integration.authenticate(current_user.myfitnesspal_username, current_user.myfitnesspal_password):
             # Sync data
             if myfitnesspal_integration.sync_data(current_user):
-                current_user.myfitnesspal_last_sync = datetime.now(datetime.timezone.utc)
+                current_user.myfitnesspal_last_sync = datetime.now(timezone.utc)
                 db.session.commit()
                 flash('Successfully synced MyFitnessPal data!', 'success')
             else:
@@ -1620,7 +1620,7 @@ def connect_garmin():
             success_sleep = garmin_integration.sync_sleep_data(current_user)
             
             if success_activities and success_sleep:
-                current_user.garmin_last_sync = datetime.now(datetime.timezone.utc)
+                current_user.garmin_last_sync = datetime.now(timezone.utc)
                 db.session.commit()
                 flash('Successfully connected to Garmin and synced data!', 'success')
             else:
