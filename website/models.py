@@ -28,12 +28,19 @@ class User(db.Model, UserMixin):
     garmin_refresh_token = db.Column(db.String(100))
     garmin_token_expires_at = db.Column(db.DateTime(timezone=True))
     garmin_last_sync = db.Column(db.DateTime(timezone=True))
-    garmin_athlete_id = db.Column(db.String(50))  # Store Garmin user ID
+    garmin_athlete_id = db.Column(db.String(50))
     
     # MyFitnessPal integration fields
     myfitnesspal_username = db.Column(db.String(150))
     myfitnesspal_password = db.Column(db.String(150))
     myfitnesspal_last_sync = db.Column(db.DateTime(timezone=True))
+    
+    # COROS integration fields
+    coros_access_token = db.Column(db.String(100))
+    coros_refresh_token = db.Column(db.String(100))
+    coros_token_expires_at = db.Column(db.DateTime(timezone=True))
+    coros_athlete_id = db.Column(db.String(50))
+    coros_last_sync = db.Column(db.DateTime(timezone=True))
 
     def __init__(self, email, username, password):
         self.email = email
@@ -55,6 +62,12 @@ class User(db.Model, UserMixin):
         self.myfitnesspal_username = None
         self.myfitnesspal_password = None
         self.myfitnesspal_last_sync = None
+        # Initialize COROS fields
+        self.coros_access_token = None
+        self.coros_refresh_token = None
+        self.coros_token_expires_at = None
+        self.coros_athlete_id = None
+        self.coros_last_sync = None
 
     def sync_strava_if_needed(self):
         """Sync Strava activities if connected and last sync was more than 24 hours ago"""

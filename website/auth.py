@@ -16,12 +16,16 @@ auth = Blueprint('auth', __name__)
 def login():
     try:
         if request.method == 'POST':
-            email = request.form.get('email')
+            email_or_username = request.form.get('email')
             password = request.form.get('password')
 
-            logger.info(f"Login attempt for: {email}")
+            logger.info(f"Login attempt for: {email_or_username}")
 
-            user = User.query.filter_by(email=email).first()
+            # Try to find user by email first, then username if not found
+            user = User.query.filter_by(email=email_or_username).first()
+            if not user:
+                user = User.query.filter_by(username=email_or_username).first()
+
             if user:
                 if check_password_hash(user.password, password):
                     logger.info(f"Successful login for user: {user.username}")
@@ -36,8 +40,8 @@ def login():
                     logger.info(f"Incorrect password for user: {user.username}")
                     flash('Incorrect password, try again.', category='error')
             else:
-                logger.info(f"No user found for email: {email}")
-                flash('Email does not exist.', category='error')
+                logger.info(f"No user found for login: {email_or_username}")
+                flash('Email or username does not exist.', category='error')
 
         return render_template("login.html", user=current_user)
     except Exception as e:
