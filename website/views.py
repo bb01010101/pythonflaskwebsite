@@ -891,7 +891,9 @@ def strava_callback():
         # Store the token response values
         current_user.strava_access_token = token_response.get('access_token')
         current_user.strava_refresh_token = token_response.get('refresh_token')
-        current_user.strava_token_expires_at = datetime.datetime.fromtimestamp(token_response.get('expires_at', 0))
+        current_user.strava_token_expires_at = datetime.datetime.fromtimestamp(
+            token_response.get('expires_at', 0)
+        ).replace(tzinfo=datetime.timezone.utc)
         
         # Get athlete ID safely
         athlete = token_response.get('athlete', {})
@@ -903,21 +905,24 @@ def strava_callback():
             logger.warning("No athlete ID found in token response")
             current_user.strava_athlete_id = None
         
+        # Add last sync timestamp
+        current_user.strava_last_sync = datetime.datetime.now(datetime.timezone.utc)
+        
         logger.info("Saving tokens to database...")
         db.session.commit()
         
-        logger.info("Starting activity sync...")
+        logger.info("Starting initial activity sync...")
         sync_result = strava_integration.sync_activities(current_user)
         if sync_result:
-            logger.info("Activity sync successful")
+            logger.info("Initial activity sync successful")
+            flash('Successfully connected to Strava and synced your activities!', 'success')
         else:
-            logger.warning("Activity sync returned False")
+            logger.warning("Activity sync failed")
+            flash('Connected to Strava but failed to sync activities. Please try manual sync.', 'warning')
         
-        flash('Successfully connected to Strava!', 'success')
         return redirect(url_for('views.settings'))
     except Exception as e:
         logger.error(f"Error in Strava callback: {str(e)}", exc_info=True)
-        logger.error(f"Token response: {token_response}")  # Add this for debugging
         flash(f'Error connecting to Strava: {str(e)}', 'error')
         return redirect(url_for('views.settings'))
 
@@ -945,24 +950,32 @@ def strava_sync():
         return redirect(url_for('views.settings'))
         
     try:
-        # Token refresh is now handled inside sync_activities
+        # Check if we need to sync (either manual sync or last sync was > 24 hours ago)
+        last_sync = current_user.strava_last_sync
+        now = datetime.datetime.now(datetime.timezone.utc)
+        should_sync = (
+            not last_sync or
+            (now - last_sync).total_seconds() > 24 * 60 * 60 or
+            request.args.get('force') == 'true'
+        )
+        
+        if not should_sync:
+            flash('Activities were synced recently. Next sync will be available in 24 hours.', 'info')
+            return redirect(url_for('views.settings'))
+            
         success = strava_integration.sync_activities(current_user)
         if success:
+            current_user.strava_last_sync = now
+            db.session.commit()
             flash('Successfully synced Strava activities!', 'success')
         else:
-            # If sync failed, it might be due to an invalid refresh token
-            # Clear the tokens and ask user to reconnect
-            current_user.strava_access_token = None
-            current_user.strava_refresh_token = None
-            current_user.strava_token_expires_at = None
-            current_user.strava_athlete_id = None
-            db.session.commit()
-            flash('Failed to sync Strava activities. Please reconnect your account.', 'error')
+            flash('Failed to sync activities. Please try again later.', 'error')
+            
+        return redirect(url_for('views.settings'))
     except Exception as e:
         logger.error(f"Error syncing Strava activities: {str(e)}", exc_info=True)
-        flash('Error syncing activities. Please try again.', 'error')
-        
-    return redirect(url_for('views.settings'))
+        flash(f'Error syncing activities: {str(e)}', 'error')
+        return redirect(url_for('views.settings'))
 
 @views.route('/test_strava_data')
 @login_required

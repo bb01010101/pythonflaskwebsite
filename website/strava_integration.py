@@ -1,6 +1,6 @@
 from stravalib import Client
 from stravalib.exc import AccessUnauthorized
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import current_app
 from . import db
 from .models import User, Activity, Entry
@@ -83,14 +83,15 @@ class StravaIntegration:
 
     def sync_activities(self, user):
         try:
+            now = datetime.now(timezone.utc)
             # Check if token needs refresh
-            if user.strava_token_expires_at and user.strava_token_expires_at <= datetime.now():
+            if user.strava_token_expires_at and user.strava_token_expires_at <= now:
                 logger.info("Access token expired, attempting to refresh")
                 try:
                     new_tokens = self.refresh_token(user.strava_refresh_token)
                     user.strava_access_token = new_tokens['access_token']
                     user.strava_refresh_token = new_tokens['refresh_token']
-                    user.strava_token_expires_at = datetime.fromtimestamp(new_tokens['expires_at'])
+                    user.strava_token_expires_at = datetime.fromtimestamp(new_tokens['expires_at']).replace(tzinfo=timezone.utc)
                     db.session.commit()
                     logger.info("Successfully refreshed and updated tokens")
                 except Exception as e:
@@ -98,7 +99,7 @@ class StravaIntegration:
                     return False
 
             self.client.access_token = user.strava_access_token
-            one_month_ago = datetime.now() - timedelta(days=30)
+            one_month_ago = now - timedelta(days=30)
             
             activities = self.client.get_activities(after=one_month_ago)
             

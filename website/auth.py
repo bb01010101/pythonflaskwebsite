@@ -16,32 +16,28 @@ auth = Blueprint('auth', __name__)
 def login():
     try:
         if request.method == 'POST':
-            login_id = request.form.get('email')  # This will now be either email or username
+            email = request.form.get('email')
             password = request.form.get('password')
 
-            logger.info(f"Login attempt for: {login_id}")
+            logger.info(f"Login attempt for: {email}")
 
-            # Try to find user by email first, then by username if not found
-            user = User.query.filter_by(email=login_id).first()
-            if not user:
-                user = User.query.filter_by(username=login_id).first()
-
+            user = User.query.filter_by(email=email).first()
             if user:
-                try:
-                    if check_password_hash(user.password, password):
-                        login_user(user, remember=True)
-                        logger.info(f"Successful login for user: {user.username}")
-                        flash('Login successful!', category='success')
-                        return redirect(url_for('views.home'))
-                    else:
-                        logger.info(f"Incorrect password for user: {user.username}")
-                        flash('Incorrect password.', category='error')
-                except Exception as e:
-                    logger.error(f"Error checking password: {str(e)}", exc_info=True)
-                    flash('An error occurred during login. Please try again.', category='error')
+                if check_password_hash(user.password, password):
+                    logger.info(f"Successful login for user: {user.username}")
+                    flash('Logged in successfully!', category='success')
+                    login_user(user, remember=True)
+                    
+                    # Trigger Strava sync if needed
+                    user.sync_strava_if_needed()
+                    
+                    return redirect(url_for('views.home'))
+                else:
+                    logger.info(f"Incorrect password for user: {user.username}")
+                    flash('Incorrect password, try again.', category='error')
             else:
-                logger.info(f"No user found for login_id: {login_id}")
-                flash('Email or username not found.', category='error')
+                logger.info(f"No user found for email: {email}")
+                flash('Email does not exist.', category='error')
 
         return render_template("login.html", user=current_user)
     except Exception as e:

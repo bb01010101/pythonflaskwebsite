@@ -21,6 +21,7 @@ class User(db.Model, UserMixin):
     strava_refresh_token = db.Column(db.String(100))
     strava_token_expires_at = db.Column(db.DateTime(timezone=True))
     strava_athlete_id = db.Column(db.String(50))
+    strava_last_sync = db.Column(db.DateTime(timezone=True))
     
     # Garmin integration fields
     garmin_access_token = db.Column(db.String(100))
@@ -43,6 +44,7 @@ class User(db.Model, UserMixin):
         self.strava_refresh_token = None
         self.strava_token_expires_at = None
         self.strava_athlete_id = None
+        self.strava_last_sync = None
         # Initialize Garmin fields
         self.garmin_access_token = None
         self.garmin_refresh_token = None
@@ -53,6 +55,26 @@ class User(db.Model, UserMixin):
         self.myfitnesspal_username = None
         self.myfitnesspal_password = None
         self.myfitnesspal_last_sync = None
+
+    def sync_strava_if_needed(self):
+        """Sync Strava activities if connected and last sync was more than 24 hours ago"""
+        if not self.strava_access_token:
+            return False
+            
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if (not self.strava_last_sync or 
+            (now - self.strava_last_sync).total_seconds() > 24 * 60 * 60):
+            from .views import strava_integration  # Import here to avoid circular import
+            try:
+                success = strava_integration.sync_activities(self)
+                if success:
+                    self.strava_last_sync = now
+                    db.session.commit()
+                return success
+            except Exception as e:
+                logger.error(f"Error in automatic Strava sync: {str(e)}")
+                return False
+        return True
 
 class CustomMetric(db.Model):
     id = db.Column(db.Integer, primary_key=True)
