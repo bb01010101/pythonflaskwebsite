@@ -2,7 +2,6 @@ from . import db
 from flask_login import UserMixin 
 from sqlalchemy.sql import func
 import datetime
-from datetime import datetime, date, timezone
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,7 +60,7 @@ class CustomMetric(db.Model):
     description = db.Column(db.Text)
     unit = db.Column(db.String(50))
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     is_higher_better = db.Column(db.Boolean, default=True)  # True if higher values are better
     is_approved = db.Column(db.Boolean, default=False)  # Admin approval status
     metric_entries = db.relationship('CustomMetricEntry', backref='metric', lazy=True)
@@ -82,7 +81,7 @@ class MetricPreference(db.Model):
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, default=date.today)
+    date = db.Column(db.Date, default=datetime.date.today)
     sleep_hours = db.Column(db.Float, default=0)
     calories = db.Column(db.Integer, default=0)
     water_intake = db.Column(db.Integer, default=0)
@@ -95,14 +94,14 @@ class Entry(db.Model):
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     image_path = db.Column(db.String(500))
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     image_data = db.Column(db.LargeBinary)
     image_filename = db.Column(db.String(255))
@@ -118,12 +117,12 @@ class Post(db.Model):
 class Like(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), primary_key=True)
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
 
@@ -150,7 +149,7 @@ class Challenge(db.Model):
     end_date = db.Column(db.DateTime, nullable=False)
     is_public = db.Column(db.Boolean, default=True)
     invite_code = db.Column(db.String(20), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     
     creator = db.relationship('User', backref=db.backref('created_challenges', lazy=True))
     participants = db.relationship('ChallengeParticipant', backref='challenge', lazy=True)
@@ -159,7 +158,7 @@ class ChallengeParticipant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     challenge_id = db.Column(db.Integer, db.ForeignKey('challenge.id'), nullable=False)
-    joined_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    joined_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     
     user = db.relationship('User', backref=db.backref('challenge_participations', lazy=True))
 
@@ -205,7 +204,7 @@ class Goal(db.Model):
     description = db.Column(db.Text, nullable=False)
     target_value = db.Column(db.Float)
     metric_type = db.Column(db.String(50))  # e.g., 'running_mileage', 'sleep_hours', etc.
-    start_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    start_date = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     end_date = db.Column(db.DateTime)
     completed = db.Column(db.Boolean, default=False)
     
@@ -216,51 +215,9 @@ class ChatMessage(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     is_bot = db.Column(db.Boolean, default=False)
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     
     user = db.relationship('User', backref=db.backref('chat_messages', lazy=True))
-
-class Habit(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    icon = db.Column(db.String(50))
-    streak = db.Column(db.Integer, default=0)
-    last_checked = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'icon': self.icon,
-            'streak': self.streak,
-            'checkedToday': self.checked_today(),
-            'lastChecked': self.last_checked.isoformat() if self.last_checked else None
-        }
-    
-    def checked_today(self):
-        if not self.last_checked:
-            return False
-        today = datetime.utcnow().date()
-        return self.last_checked.date() == today
-    
-    def check(self):
-        now = datetime.utcnow()
-        if self.last_checked:
-            # If last check was yesterday, increment streak
-            if (now.date() - self.last_checked.date()).days == 1:
-                self.streak += 1
-            # If more than a day has passed, reset streak
-            elif (now.date() - self.last_checked.date()).days > 1:
-                self.streak = 1
-            # If already checked today, do nothing
-            else:
-                return
-        else:
-            self.streak = 1
-        
-        self.last_checked = now
 
 
 

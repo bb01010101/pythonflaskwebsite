@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from os import path
 from flask_login import LoginManager
 from flask_migrate import Migrate
-from datetime import datetime, date, timezone
+import datetime
 import os
 import logging
 
@@ -28,23 +28,7 @@ def create_app():
         # Handle potential "postgres://" style URLs
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        
-        # Add SSL mode to URL if not already present
-        if '?sslmode=' not in DATABASE_URL:
-            DATABASE_URL += '?sslmode=require'
-        
         app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-        
-        # Configure SSL options
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            'connect_args': {
-                'sslmode': 'require',
-                'connect_timeout': 30
-            },
-            'pool_pre_ping': True,
-            'pool_recycle': 300,
-            'pool_timeout': 30
-        }
     else:
         # Fallback for development
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -110,9 +94,9 @@ def create_app():
             return ''
 
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.datetime.now(datetime.timezone.utc)
             if timestamp.tzinfo is None:
-                timestamp = timestamp.replace(tzinfo=timezone.utc)
+                timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
 
             diff = now - timestamp
 
